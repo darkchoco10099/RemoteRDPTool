@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RemoteRDPTool.Views.ConnectionEditWindow"
+        Width="520"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="连接配置">
+  <Grid Margin="20" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="12">
+    <TextBlock Text="名称" VerticalAlignment="Center" />
+    <TextBox x:Name="NameBox" Grid.Column="1" />
+
+    <TextBlock Grid.Row="1" Text="IP/主机" VerticalAlignment="Center" />
+    <TextBox x:Name="HostBox" Grid.Row="1" Grid.Column="1" />
+
+    <TextBlock Grid.Row="2" Text="账号" VerticalAlignment="Center" />
+    <TextBox x:Name="UserBox" Grid.Row="2" Grid.Column="1" />
+
+    <TextBlock Grid.Row="3" Text="密码" VerticalAlignment="Center" />
+    <TextBox x:Name="PasswordBox" Grid.Row="3" Grid.Column="1" PasswordChar="●" />
+
+    <TextBlock Grid.Row="4" Text="分组" VerticalAlignment="Center" />
+    <ComboBox x:Name="GroupBox" Grid.Row="4" Grid.Column="1" IsEditable="True" />
+
+    <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Content="取消" Click="Cancel_Click" />
+      <Button Content="保存" IsDefault="True" Click="Save_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

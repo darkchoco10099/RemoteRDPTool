@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RemoteRDPTool.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="RemoteRDPTool.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="RemoteRDPTool"
+        MinWidth="980"
+        MinHeight="640">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*" Background="{DynamicResource SystemControlAcrylicWindowBrush}">
+        <Border Padding="16,14" Background="{DynamicResource SystemControlAcrylicElementBrush}">
+            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <TextBox Watermark="搜索 名称 / 主机 / 账号 / 分组"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Height="38" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0">
+                    <Button Content="新增分组" Command="{Binding AddGroupCommand}" Height="38" />
+                    <Button Content="重命名" Command="{Binding RenameGroupCommand}" Height="38" />
+                    <Button Content="删除分组" Command="{Binding DeleteGroupCommand}" Height="38" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="260,*" Margin="16">
+            <Border Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="分组" FontSize="14" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding Groups}"
+                              SelectedItem="{Binding SelectedGroup}"
+                              Height="36" />
+                    <Button Content="新增连接" Command="{Binding AddConnectionCommand}" Height="38" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Margin="16,0,0,0" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10">
+                <Grid RowDefinitions="*,Auto">
+                    <DataGrid ItemsSource="{Binding FilteredConnections}"
+                              x:Name="ConnectionsGrid"
+                              SelectedItem="{Binding SelectedConnection}"
+                              AutoGenerateColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              GridLinesVisibility="None"
+                              HeadersVisibility="Column"
+                              RowHeight="42"
+                              DoubleTapped="ConnectionsGrid_DoubleTapped">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="2*" />
+                            <DataGridTextColumn Header="主机" Binding="{Binding Host}" Width="2*" />
+                            <DataGridTextColumn Header="账号" Binding="{Binding Username}" Width="2*" />
+                            <DataGridTextColumn Header="分组" Binding="{Binding Group}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="1" Padding="12" Background="{DynamicResource SystemControlAcrylicElementBrush}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="连接" Command="{Binding ConnectCommand}" Height="38" />
+                            <Button Content="编辑" Command="{Binding EditConnectionCommand}" Height="38" />
+                            <Button Content="删除" Command="{Binding DeleteConnectionCommand}" Height="38" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+
+</Window>
