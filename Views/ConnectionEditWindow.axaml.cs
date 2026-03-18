@@ -9,6 +9,15 @@ public partial class ConnectionEditWindow : Window
 {
   private readonly RdpConnectionEntry _original;
 
+  public ConnectionEditWindow()
+  {
+    InitializeComponent();
+
+    var groupItems = new List<string> { "默认" };
+    GroupBox.ItemsSource = groupItems;
+    GroupBox.SelectedItem = groupItems[0];
+  }
+
   public ConnectionEditWindow(RdpConnectionEntry entry, IReadOnlyList<string> groups)
   {
     InitializeComponent();

@@ -6,18 +6,38 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Title="连接配置">
-  <Grid Margin="20" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="12">
+  <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="20"
+        ColumnDefinitions="Auto,*"
+        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+        RowSpacing="12"
+        ColumnSpacing="12">
     <TextBlock Text="名称" VerticalAlignment="Center" />
-    <TextBox x:Name="NameBox" Grid.Column="1" />
+    <TextBox x:Name="NameBox" Grid.Column="1" Watermark="连接名称（可选）" />
 
     <TextBlock Grid.Row="1" Text="IP/主机" VerticalAlignment="Center" />
-    <TextBox x:Name="HostBox" Grid.Row="1" Grid.Column="1" />
+    <TextBox x:Name="HostBox" Grid.Row="1" Grid.Column="1" Watermark="例如：10.0.0.8 或 server.domain.com" />
 
     <TextBlock Grid.Row="2" Text="账号" VerticalAlignment="Center" />
-    <TextBox x:Name="UserBox" Grid.Row="2" Grid.Column="1" />
+    <TextBox x:Name="UserBox" Grid.Row="2" Grid.Column="1" Watermark="例如：Administrator 或 domain\\user" />
 
     <TextBlock Grid.Row="3" Text="密码" VerticalAlignment="Center" />
-    <TextBox x:Name="PasswordBox" Grid.Row="3" Grid.Column="1" PasswordChar="●" />
+    <TextBox x:Name="PasswordBox" Grid.Row="3" Grid.Column="1" PasswordChar="●" Watermark="可留空，连接时再输入" />
 
     <TextBlock Grid.Row="4" Text="分组" VerticalAlignment="Center" />
     <ComboBox x:Name="GroupBox" Grid.Row="4" Grid.Column="1" IsEditable="True" />

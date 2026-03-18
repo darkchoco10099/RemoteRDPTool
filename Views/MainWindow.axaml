@@ -11,6 +11,26 @@
         MinWidth="980"
         MinHeight="640">
 
+    <Window.Styles>
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="MinHeight" Value="36" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="MinHeight" Value="36" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="MinHeight" Value="36" />
+        </Style>
+        <Style Selector="DataGrid">
+            <Setter Property="GridLinesVisibility" Value="None" />
+            <Setter Property="RowHeight" Value="40" />
+        </Style>
+    </Window.Styles>
+
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
@@ -19,40 +39,59 @@
 
     <Grid RowDefinitions="Auto,*" Background="{DynamicResource SystemControlAcrylicWindowBrush}">
         <Border Padding="16,14" Background="{DynamicResource SystemControlAcrylicElementBrush}">
-            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                <TextBox Watermark="搜索 名称 / 主机 / 账号 / 分组"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         Height="38" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="12,0,0,0">
-                    <Button Content="新增分组" Command="{Binding AddGroupCommand}" Height="38" />
-                    <Button Content="重命名" Command="{Binding RenameGroupCommand}" Height="38" />
-                    <Button Content="删除分组" Command="{Binding DeleteGroupCommand}" Height="38" />
+            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" ColumnSpacing="14">
+                <StackPanel Orientation="Vertical" Spacing="2">
+                    <TextBlock Text="RemoteRDPTool" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="RDP 连接管理" Opacity="0.75" FontSize="12" />
+                </StackPanel>
+                <TextBox Grid.Column="1"
+                         Watermark="搜索 名称 / 主机 / 账号 / 分组"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <Button Content="新增连接" Command="{Binding AddConnectionCommand}" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="260,*" Margin="16">
-            <Border Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="12">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="分组" FontSize="14" FontWeight="SemiBold" />
-                    <ComboBox ItemsSource="{Binding Groups}"
-                              SelectedItem="{Binding SelectedGroup}"
-                              Height="36" />
-                    <Button Content="新增连接" Command="{Binding AddConnectionCommand}" Height="38" />
+        <Grid Grid.Row="1" ColumnDefinitions="300,*" ColumnSpacing="16" Margin="16">
+            <Border Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="14">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="分组" FontSize="14" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding Groups}"
+                                  SelectedItem="{Binding SelectedGroup}" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                        <Button Content="新增" Command="{Binding AddGroupCommand}" />
+                        <Button Grid.Column="1" Content="重命名" Command="{Binding RenameGroupCommand}" />
+                        <Button Grid.Column="2" Content="删除" Command="{Binding DeleteGroupCommand}" />
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="1" Margin="16,0,0,0" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10">
-                <Grid RowDefinitions="*,Auto">
-                    <DataGrid ItemsSource="{Binding FilteredConnections}"
+            <Border Grid.Column="1" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="14">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <TextBlock Text="连接" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding SelectedGroup}" Opacity="0.75" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                            <Button Content="连接" Command="{Binding ConnectCommand}" />
+                            <Button Content="编辑" Command="{Binding EditConnectionCommand}" />
+                            <Button Content="删除" Command="{Binding DeleteConnectionCommand}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding FilteredConnections}"
                               x:Name="ConnectionsGrid"
                               SelectedItem="{Binding SelectedConnection}"
                               AutoGenerateColumns="False"
                               CanUserResizeColumns="True"
                               CanUserSortColumns="False"
-                              GridLinesVisibility="None"
                               HeadersVisibility="Column"
-                              RowHeight="42"
                               DoubleTapped="ConnectionsGrid_DoubleTapped">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="2*" />
@@ -62,12 +101,12 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <Border Grid.Row="1" Padding="12" Background="{DynamicResource SystemControlAcrylicElementBrush}">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                            <Button Content="连接" Command="{Binding ConnectCommand}" Height="38" />
-                            <Button Content="编辑" Command="{Binding EditConnectionCommand}" Height="38" />
-                            <Button Content="删除" Command="{Binding DeleteConnectionCommand}" Height="38" />
-                        </StackPanel>
+                    <Border Grid.Row="2" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="8" Padding="10,8">
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ConfigFilePath}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="1" Content="打开配置" Command="{Binding OpenConfigCommand}" />
+                            <Button Grid.Column="2" Content="刷新" Command="{Binding ReloadConfigCommand}" />
+                        </Grid>
                     </Border>
                 </Grid>
             </Border>

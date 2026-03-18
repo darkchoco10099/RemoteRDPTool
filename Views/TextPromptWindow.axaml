@@ -7,10 +7,12 @@
         WindowStartupLocation="CenterOwner">
   <Grid Margin="20" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
     <TextBlock x:Name="LabelBlock" FontSize="14" />
-    <TextBox x:Name="InputBox" Grid.Row="1" />
+    <TextBox x:Name="InputBox"
+             Grid.Row="1"
+             MinHeight="40" />
     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-      <Button Content="取消" Click="Cancel_Click" />
-      <Button Content="确定" IsDefault="True" Click="Ok_Click" />
+      <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click" />
+      <Button x:Name="OkButton" Content="确定" IsDefault="True" Click="Ok_Click" />
     </StackPanel>
   </Grid>
 </Window>
