@@ -3,137 +3,196 @@
         xmlns:vm="using:RemoteRDPTool.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1376" d:DesignHeight="768"
         x:Class="RemoteRDPTool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
         Icon="/Assets/avalonia-logo.ico"
         Title="RemoteRDPTool"
-        MinWidth="980"
-        MinHeight="640">
+        Background="#F6F8FB"
+        MinWidth="1180"
+        MinHeight="700">
 
     <Window.Styles>
-        <Style Selector="Button">
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="MinHeight" Value="36" />
+        <Style Selector="Button.navButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="#DCE3F0" />
+            <Setter Property="Padding" Value="6,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
-        <Style Selector="TextBox">
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="MinHeight" Value="36" />
+        <Style Selector="Button.searchAddMain">
+            <Setter Property="Background" Value="#0B75D1" />
+            <Setter Property="BorderBrush" Value="#0B75D1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="22,6" />
+            <Setter Property="CornerRadius" Value="4,0,0,4" />
+            <Setter Property="MinHeight" Value="34" />
         </Style>
-        <Style Selector="ComboBox">
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="MinHeight" Value="36" />
+        <Style Selector="Button.searchAddDrop">
+            <Setter Property="Background" Value="#0B75D1" />
+            <Setter Property="BorderBrush" Value="#0B75D1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="CornerRadius" Value="0,4,4,0" />
+            <Setter Property="MinHeight" Value="34" />
         </Style>
-        <Style Selector="DataGrid">
-            <Setter Property="GridLinesVisibility" Value="None" />
-            <Setter Property="RowHeight" Value="40" />
+        <Style Selector="TextBox.searchBox">
+            <Setter Property="Background" Value="#242C37" />
+            <Setter Property="BorderBrush" Value="#2E3947" />
+            <Setter Property="Foreground" Value="#E6ECF6" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+        <Style Selector="Button.cardAction">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="#44558F" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.cardDelete">
+            <Setter Property="Foreground" Value="#B75C52" />
+        </Style>
+        <Style Selector="Button.footerButton">
+            <Setter Property="Background" Value="#2B3340" />
+            <Setter Property="BorderBrush" Value="#3A4452" />
+            <Setter Property="Foreground" Value="#EAF0FC" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,6" />
+            <Setter Property="MinHeight" Value="32" />
+        </Style>
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
     </Window.Styles>
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource SystemControlAcrylicWindowBrush}">
-        <Border Padding="16,14" Background="{DynamicResource SystemControlAcrylicElementBrush}">
-            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" ColumnSpacing="14">
-                <StackPanel Orientation="Vertical" Spacing="2">
-                    <TextBlock Text="RemoteRDPTool" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="RDP 连接管理" Opacity="0.75" FontSize="12" />
+    <Grid RowDefinitions="*,40" ColumnDefinitions="74,*">
+        <Border Background="#121926" Grid.RowSpan="2">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Margin="0,14,0,0" Spacing="8">
+                    <Button Classes="navButton">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="🖥" HorizontalAlignment="Center" />
+                            <TextBlock Text="Connections" FontSize="11" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="navButton">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="👥" HorizontalAlignment="Center" />
+                            <TextBlock Text="Groups" FontSize="11" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-                <TextBox Grid.Column="1"
-                         Watermark="搜索 名称 / 主机 / 账号 / 分组"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
-                    <Button Content="新增连接" Command="{Binding AddConnectionCommand}" />
-                    <Button Content="新增分组" Command="{Binding AddGroupCommand}" />
-                </StackPanel>
+                <Button Grid.Row="2" Classes="navButton" Margin="0,0,0,12">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="⚙" HorizontalAlignment="Center" />
+                        <TextBlock Text="Settings" FontSize="11" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" Margin="16">
-            <ItemsControl ItemsSource="{Binding GroupViews}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="12" Margin="0,0,0,12">
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                <Expander Grid.Column="0"
-                                          IsExpanded="{Binding IsExpanded}"
-                                          IsEnabled="{Binding HasConnections}">
-                                    <Expander.Header>
-                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding Count}" Opacity="0.65" />
-                                        </StackPanel>
-                                    </Expander.Header>
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <Border Background="#1F2631" Padding="14,10" BorderBrush="#2A333F" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="0">
+                    <TextBox Classes="searchBox"
+                             Watermark="Search Name/IP/Account/Group"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Column="1"
+                            Classes="searchAddMain"
+                            Content="Add"
+                            Command="{Binding AddConnectionCommand}" />
+                    <Button Grid.Column="2" Classes="searchAddDrop" Content="▼">
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Add Connection" Command="{Binding AddConnectionCommand}" />
+                                <MenuItem Header="Add Group" Command="{Binding AddGroupCommand}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+            </Border>
 
-                                    <Border Margin="0,10,0,0" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="8" Padding="10">
-                                        <ListBox ItemsSource="{Binding Connections}"
-                                                 SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                 DoubleTapped="ConnectionsGrid_DoubleTapped"
-                                                 BorderThickness="0">
-                                            <ListBox.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ListBox.ItemsPanel>
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border CornerRadius="8"
-                                                            Padding="10,8"
-                                                            Margin="0,0,10,10"
-                                                            Background="{DynamicResource SystemControlAcrylicElementBrush}">
-                                                        <StackPanel Spacing="4">
-                                                            <TextBlock Text="{Binding Host}" FontWeight="SemiBold" />
-                                                            <TextBlock Text="{Binding Name}" Opacity="0.75" />
-                                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                                                <TextBlock Text="{Binding Username}" Opacity="0.75" />
-                                                                <TextBlock Grid.Column="1"
-                                                                           Text="{Binding PingStatus}"
-                                                                           Opacity="0.8" />
-                                                            </Grid>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
+            <ScrollViewer Grid.Row="1" Margin="14,12,14,12">
+                <ItemsControl ItemsSource="{Binding GroupViews}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,12">
+                                <Expander.Header>
+                                    <Border Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="10" Padding="12,8">
+                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#232A35" />
                                     </Border>
-                                </Expander>
+                                </Expander.Header>
+                                <Border Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="0,0,10,10" Padding="12,12,12,2">
+                                    <ListBox ItemsSource="{Binding Connections}"
+                                             SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             DoubleTapped="ConnectionsGrid_DoubleTapped">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="596" Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="8" Margin="0,0,12,10" Padding="14,10">
+                                                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
+                                                        <TextBlock Grid.Row="1" FontSize="12" Foreground="#2A2F36">
+                                                            <Run Text="{Binding Host}" />
+                                                            <Run Text=" - " />
+                                                            <Run Text="{Binding Username}" />
+                                                        </TextBlock>
+                                                        <Grid Grid.Row="2" ColumnDefinitions="*,1,*,1,*">
+                                                            <Button Classes="cardAction"
+                                                                    Content="Connect"
+                                                                    Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding Entry}" />
+                                                            <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
+                                                            <Button Grid.Column="2"
+                                                                    Classes="cardAction"
+                                                                    Content="Edit"
+                                                                    Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding Entry}" />
+                                                            <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
+                                                            <Button Grid.Column="4"
+                                                                    Classes="cardAction cardDelete"
+                                                                    Content="Delete"
+                                                                    Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding Entry}" />
+                                                        </Grid>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
 
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Horizontal"
-                                            Spacing="8"
-                                            VerticalAlignment="Top">
-                                    <Button Content="新增"
-                                            Command="{Binding DataContext.AddConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding Name}" />
-                                    <Button Content="重命名"
-                                            IsVisible="{Binding CanManage}"
-                                            Command="{Binding DataContext.RenameGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding Name}" />
-                                    <Button Content="删除"
-                                            IsVisible="{Binding CanManage}"
-                                            Command="{Binding DataContext.DeleteGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding Name}" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-
-        <Border Grid.Row="2" Background="{DynamicResource SystemControlAcrylicElementBrush}" Padding="12" Margin="16" CornerRadius="10">
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ConfigFilePath}" Opacity="0.75" TextTrimming="CharacterEllipsis" />
-                <Button Grid.Column="1" Content="打开配置" Command="{Binding OpenConfigCommand}" />
-                <Button Grid.Column="2" Content="刷新" Command="{Binding ReloadConfigCommand}" />
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#1E2530" BorderBrush="#2A333F" BorderThickness="0,1,0,0" Padding="10,4">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                <TextBlock Text="{Binding ConfigFilePath}" Foreground="#8F9BB0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Classes="footerButton" Content="Open Config" Command="{Binding OpenConfigCommand}" />
+                <Button Grid.Column="2" Classes="footerButton" Content="Refresh" Command="{Binding ReloadConfigCommand}" />
             </Grid>
         </Border>
     </Grid>
-
 </Window>

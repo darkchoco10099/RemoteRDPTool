@@ -350,6 +350,16 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
+  [RelayCommand]
+  private async Task EditEntryAsync(RdpConnectionEntry entry)
+  {
+    var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
+    if (cv is null)
+      return;
+    SelectedConnection = cv;
+    await EditConnectionAsync();
+  }
+
   [RelayCommand(CanExecute = nameof(HasSelectedConnection))]
   private async Task DeleteConnectionAsync()
   {
@@ -368,6 +378,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
       await _windowService.ShowMessageAsync("删除连接失败", $"{ex.Message}\n\n{_configStore.ConfigPath}");
     }
+  }
+
+  [RelayCommand]
+  private async Task DeleteEntryAsync(RdpConnectionEntry entry)
+  {
+    var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
+    if (cv is null)
+      return;
+    SelectedConnection = cv;
+    await DeleteConnectionAsync();
   }
 
   [RelayCommand(CanExecute = nameof(HasSelectedConnection))]
@@ -409,6 +429,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
       await _windowService.ShowMessageAsync("连接失败", ex.Message);
     }
+  }
+
+  [RelayCommand]
+  private async Task ConnectEntryAsync(RdpConnectionEntry entry)
+  {
+    var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
+    if (cv is null)
+      return;
+    SelectedConnection = cv;
+    await ConnectAsync();
   }
 
   private bool HasSelectedConnection() => SelectedConnection is not null;
