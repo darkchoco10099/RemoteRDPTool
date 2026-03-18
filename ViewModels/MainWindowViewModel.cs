@@ -36,11 +36,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     Groups = new ObservableCollection<string>();
     FilteredConnections = new ObservableCollection<RdpConnectionEntry>();
+    GroupViews = new ObservableCollection<GroupView>();
   }
 
   public ObservableCollection<string> Groups { get; }
 
   public ObservableCollection<RdpConnectionEntry> FilteredConnections { get; }
+
+  public ObservableCollection<GroupView> GroupViews { get; }
 
   public string ConfigFilePath => _configStore.ConfigPath;
 
@@ -208,12 +211,14 @@ public partial class MainWindowViewModel : ViewModelBase
   private bool CanEditOrDeleteGroup() => SelectedGroup is not ("全部" or "未分组");
 
   [RelayCommand]
-  private async Task AddConnectionAsync()
+  private async Task AddConnectionAsync(string? groupName)
   {
     try
     {
       var groups = _config.Groups.Select(g => g.Name).ToArray();
-      var initialGroup = SelectedGroup is "全部" or "未分组" ? groups.FirstOrDefault() ?? "默认" : SelectedGroup;
+      var initialGroup = !string.IsNullOrWhiteSpace(groupName) && groupName != "未分组"
+          ? groupName
+          : groups.FirstOrDefault() ?? "默认";
 
       if (_config.Groups.All(g => !string.Equals(g.Name, initialGroup, StringComparison.Ordinal)))
       {
@@ -239,13 +244,74 @@ public partial class MainWindowViewModel : ViewModelBase
       await _configStore.SaveAsync(_config);
 
       RefreshGroups();
-      SelectedGroup = result.Group;
       RefreshConnections();
       SelectedConnection = FilteredConnections.FirstOrDefault(c => c.Id == result.Id);
     }
     catch (Exception ex)
     {
       await _windowService.ShowMessageAsync("新增连接失败", $"{ex.Message}\n\n{_configStore.ConfigPath}");
+    }
+  }
+
+  [RelayCommand]
+  private async Task RenameGroupByNameAsync(string groupName)
+  {
+    try
+    {
+      if (groupName is "未分组" or "全部")
+        return;
+
+      var newName = await _windowService.PromptTextAsync("重命名分组", "分组名称", groupName);
+      if (string.IsNullOrWhiteSpace(newName))
+        return;
+
+      if (string.Equals(groupName, newName, StringComparison.Ordinal))
+        return;
+
+      if (_config.Groups.Any(g => string.Equals(g.Name, newName, StringComparison.OrdinalIgnoreCase)))
+        return;
+
+      var group = _config.Groups.FirstOrDefault(g => string.Equals(g.Name, groupName, StringComparison.Ordinal));
+      if (group is null)
+        return;
+
+      group.Name = newName;
+      await _configStore.SaveAsync(_config);
+      RefreshGroups();
+      RefreshConnections();
+    }
+    catch (Exception ex)
+    {
+      await _windowService.ShowMessageAsync("重命名分组失败", $"{ex.Message}\n\n{_configStore.ConfigPath}");
+    }
+  }
+
+  [RelayCommand]
+  private async Task DeleteGroupByNameAsync(string groupName)
+  {
+    try
+    {
+      if (groupName is "未分组" or "全部")
+        return;
+
+      var group = _config.Groups.FirstOrDefault(g => string.Equals(g.Name, groupName, StringComparison.Ordinal));
+      if (group is null)
+        return;
+
+      if (group.Connections.Count > 0)
+      {
+        await _windowService.ShowMessageAsync("无法删除分组", "分组内仍有连接，请先删除或移动连接。");
+        return;
+      }
+
+      _config.Groups.Remove(group);
+      await _configStore.SaveAsync(_config);
+      RefreshGroups();
+      RefreshConnections();
+    }
+    catch (Exception ex)
+    {
+      await _windowService.ShowMessageAsync("删除分组失败", $"{ex.Message}\n\n{_configStore.ConfigPath}");
     }
   }
 
@@ -365,15 +431,6 @@ public partial class MainWindowViewModel : ViewModelBase
         .SelectMany(g => g.Connections.Select(c => RdpConnectionEntry.FromConnection(g.Name, c)))
         .ToList();
 
-    if (SelectedGroup == "未分组")
-    {
-      entries = entries.Where(e => string.IsNullOrWhiteSpace(e.Group)).ToList();
-    }
-    else if (SelectedGroup != "全部")
-    {
-      entries = entries.Where(e => string.Equals(e.Group, SelectedGroup, StringComparison.Ordinal)).ToList();
-    }
-
     if (!string.IsNullOrWhiteSpace(SearchText))
     {
       var q = SearchText.Trim();
@@ -385,17 +442,40 @@ public partial class MainWindowViewModel : ViewModelBase
           .ToList();
     }
 
-    entries = entries.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    entries = entries
+        .OrderBy(e => e.Host, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 
     FilteredConnections.Clear();
     foreach (var e in entries)
       FilteredConnections.Add(e);
+
+    RebuildGroupViews(entries);
 
     EditConnectionCommand.NotifyCanExecuteChanged();
     DeleteConnectionCommand.NotifyCanExecuteChanged();
     ConnectCommand.NotifyCanExecuteChanged();
     RenameGroupCommand.NotifyCanExecuteChanged();
     DeleteGroupCommand.NotifyCanExecuteChanged();
+  }
+
+  private void RebuildGroupViews(List<RdpConnectionEntry> entries)
+  {
+    var grouped = entries
+        .GroupBy(e => string.IsNullOrWhiteSpace(e.Group) ? "未分组" : e.Group)
+        .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+    GroupViews.Clear();
+
+    foreach (var name in _config.Groups.Select(g => g.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+    {
+      grouped.TryGetValue(name, out var items);
+      GroupViews.Add(new GroupView(name, items ?? [], isExpanded: (items?.Count ?? 0) > 0));
+    }
+
+    grouped.TryGetValue("未分组", out var ungroupedItems);
+    GroupViews.Add(new GroupView("未分组", ungroupedItems ?? [], isExpanded: (ungroupedItems?.Count ?? 0) > 0));
   }
 
   private RdpGroup GetOrCreateGroup(string groupName)
@@ -471,5 +551,27 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task<CredentialPromptResult?> PromptCredentialAsync(RdpConnectionEntry entry) => Task.FromResult<CredentialPromptResult?>(null);
 
     public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
+  }
+
+  public sealed partial class GroupView : ObservableObject
+  {
+    public GroupView(string name, IReadOnlyList<RdpConnectionEntry> connections, bool isExpanded)
+    {
+      Name = name;
+      Connections = new ObservableCollection<RdpConnectionEntry>(connections);
+      Count = Connections.Count;
+      IsExpanded = isExpanded;
+    }
+
+    public string Name { get; }
+
+    public ObservableCollection<RdpConnectionEntry> Connections { get; }
+
+    public int Count { get; }
+
+    public bool CanManage => Name is not "未分组";
+
+    [ObservableProperty]
+    private bool isExpanded;
   }
 }

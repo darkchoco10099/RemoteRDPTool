@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
@@ -12,6 +13,15 @@ public partial class ConnectionEditWindow : Window
   public ConnectionEditWindow()
   {
     InitializeComponent();
+    _original = new RdpConnectionEntry
+    {
+      Id = Guid.Empty,
+      Name = string.Empty,
+      Host = string.Empty,
+      Username = string.Empty,
+      Password = string.Empty,
+      Group = "默认"
+    };
 
     var groupItems = new List<string> { "默认" };
     GroupBox.ItemsSource = groupItems;
