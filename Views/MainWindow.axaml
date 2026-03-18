@@ -60,50 +60,67 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="10" Padding="12" Margin="0,0,0,12">
-                            <Expander IsExpanded="{Binding IsExpanded}">
-                                <Expander.Header>
-                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <Expander Grid.Column="0"
+                                          IsExpanded="{Binding IsExpanded}"
+                                          IsEnabled="{Binding HasConnections}">
+                                    <Expander.Header>
                                         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding Count}" Opacity="0.65" />
                                         </StackPanel>
-                                        <Button Grid.Column="1"
-                                                Content="新增连接"
-                                                Command="{Binding DataContext.AddConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding Name}" />
-                                        <Button Grid.Column="2"
-                                                Content="重命名"
-                                                IsVisible="{Binding CanManage}"
-                                                Command="{Binding DataContext.RenameGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding Name}" />
-                                        <Button Grid.Column="3"
-                                                Content="删除"
-                                                IsVisible="{Binding CanManage}"
-                                                Command="{Binding DataContext.DeleteGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding Name}" />
-                                    </Grid>
-                                </Expander.Header>
+                                    </Expander.Header>
 
-                                <Border Margin="0,10,0,0" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="8" Padding="10">
-                                    <ListBox ItemsSource="{Binding Connections}"
-                                             SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
-                                             DoubleTapped="ConnectionsGrid_DoubleTapped">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border CornerRadius="8" Padding="10,8">
-                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                                        <StackPanel Spacing="2">
+                                    <Border Margin="0,10,0,0" Background="{DynamicResource SystemControlAcrylicElementBrush}" CornerRadius="8" Padding="10">
+                                        <ListBox ItemsSource="{Binding Connections}"
+                                                 SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 DoubleTapped="ConnectionsGrid_DoubleTapped"
+                                                 BorderThickness="0">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8"
+                                                            Padding="10,8"
+                                                            Margin="0,0,10,10"
+                                                            Background="{DynamicResource SystemControlAcrylicElementBrush}">
+                                                        <StackPanel Spacing="4">
                                                             <TextBlock Text="{Binding Host}" FontWeight="SemiBold" />
                                                             <TextBlock Text="{Binding Name}" Opacity="0.75" />
+                                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                                <TextBlock Text="{Binding Username}" Opacity="0.75" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding PingStatus}"
+                                                                           Opacity="0.8" />
+                                                            </Grid>
                                                         </StackPanel>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Username}" Opacity="0.75" VerticalAlignment="Center" />
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Border>
-                            </Expander>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </Expander>
+
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            VerticalAlignment="Top">
+                                    <Button Content="新增"
+                                            Command="{Binding DataContext.AddConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding Name}" />
+                                    <Button Content="重命名"
+                                            IsVisible="{Binding CanManage}"
+                                            Command="{Binding DataContext.RenameGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding Name}" />
+                                    <Button Content="删除"
+                                            IsVisible="{Binding CanManage}"
+                                            Command="{Binding DataContext.DeleteGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding Name}" />
+                                </StackPanel>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

@@ -4,9 +4,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Avalonia.Threading;
+using System.Net.NetworkInformation;
 using RemoteRDPTool.Models;
 using RemoteRDPTool.Services;
 
@@ -19,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private readonly IWindowService _windowService;
 
   private AppConfig _config = new();
+  private CancellationTokenSource? _pingTokenSource;
 
   public MainWindowViewModel()
       : this(new DesignAppConfigStore(), new DesignRdpLauncher(), new DesignWindowService())
@@ -54,7 +58,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private string selectedGroup = "全部";
 
   [ObservableProperty]
-  private RdpConnectionEntry? selectedConnection;
+  private ConnectionView? selectedConnection;
 
   public async Task InitializeAsync()
   {
@@ -69,6 +73,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     RefreshGroups();
     RefreshConnections();
+    StartPingLoop();
   }
 
   [RelayCommand]
@@ -76,9 +81,11 @@ public partial class MainWindowViewModel : ViewModelBase
   {
     try
     {
+      _pingTokenSource?.Cancel();
       _config = await _configStore.LoadAsync();
       RefreshGroups();
       RefreshConnections();
+      StartPingLoop();
     }
     catch (Exception ex)
     {
@@ -121,7 +128,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
   partial void OnSelectedGroupChanged(string value) => RefreshConnections();
 
-  partial void OnSelectedConnectionChanged(RdpConnectionEntry? value)
+  partial void OnSelectedConnectionChanged(ConnectionView? value)
   {
     EditConnectionCommand.NotifyCanExecuteChanged();
     DeleteConnectionCommand.NotifyCanExecuteChanged();
@@ -245,7 +252,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
       RefreshGroups();
       RefreshConnections();
-      SelectedConnection = FilteredConnections.FirstOrDefault(c => c.Id == result.Id);
+      SelectedConnection = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == result.Id);
     }
     catch (Exception ex)
     {
@@ -324,7 +331,7 @@ public partial class MainWindowViewModel : ViewModelBase
         return;
 
       var original = SelectedConnection;
-      var result = await _windowService.EditConnectionAsync(original with { }, _config.Groups.Select(g => g.Name).ToArray());
+      var result = await _windowService.EditConnectionAsync(original.Entry with { }, _config.Groups.Select(g => g.Name).ToArray());
       if (result is null)
         return;
 
@@ -334,9 +341,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
       await _configStore.SaveAsync(_config);
       RefreshGroups();
-      SelectedGroup = result.Group;
       RefreshConnections();
-      SelectedConnection = FilteredConnections.FirstOrDefault(c => c.Id == result.Id);
+      SelectedConnection = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == result.Id);
     }
     catch (Exception ex)
     {
@@ -372,7 +378,7 @@ public partial class MainWindowViewModel : ViewModelBase
       if (SelectedConnection is null)
         return;
 
-      var entry = SelectedConnection;
+      var entry = SelectedConnection.Entry;
       var password = entry.Password;
       var username = entry.Username;
 
@@ -393,7 +399,7 @@ public partial class MainWindowViewModel : ViewModelBase
           group.Connections.Add(updated.ToConnection());
           await _configStore.SaveAsync(_config);
           RefreshConnections();
-          SelectedConnection = FilteredConnections.FirstOrDefault(c => c.Id == updated.Id);
+          SelectedConnection = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == updated.Id);
         }
       }
 
@@ -478,6 +484,72 @@ public partial class MainWindowViewModel : ViewModelBase
     GroupViews.Add(new GroupView("未分组", ungroupedItems ?? [], isExpanded: (ungroupedItems?.Count ?? 0) > 0));
   }
 
+  private void StartPingLoop()
+  {
+    _pingTokenSource?.Cancel();
+    var cts = new CancellationTokenSource();
+    _pingTokenSource = cts;
+
+    Task.Run(() => PingLoopAsync(cts.Token));
+  }
+
+  private async Task PingLoopAsync(CancellationToken token)
+  {
+    using var ping = new Ping();
+
+    while (!token.IsCancellationRequested)
+    {
+      var snapshot = GroupViews
+          .SelectMany(g => g.Connections)
+          .ToList();
+
+      foreach (var conn in snapshot)
+      {
+        if (token.IsCancellationRequested)
+          break;
+
+        var host = conn.Host;
+        if (string.IsNullOrWhiteSpace(host))
+        {
+          await Dispatcher.UIThread.InvokeAsync(() =>
+          {
+            conn.IsOnline = false;
+            conn.PingStatus = "未配置";
+          });
+          continue;
+        }
+
+        try
+        {
+          var reply = await ping.SendPingAsync(host, 1000);
+          var ok = reply.Status == IPStatus.Success;
+          await Dispatcher.UIThread.InvokeAsync(() =>
+          {
+            conn.IsOnline = ok;
+            conn.PingStatus = ok ? "在线" : "不可达";
+          });
+        }
+        catch
+        {
+          await Dispatcher.UIThread.InvokeAsync(() =>
+          {
+            conn.IsOnline = false;
+            conn.PingStatus = "错误";
+          });
+        }
+      }
+
+      try
+      {
+        await Task.Delay(TimeSpan.FromSeconds(5), token);
+      }
+      catch (TaskCanceledException)
+      {
+        break;
+      }
+    }
+  }
+
   private RdpGroup GetOrCreateGroup(string groupName)
   {
     var existing = _config.Groups.FirstOrDefault(g => string.Equals(g.Name, groupName, StringComparison.Ordinal));
@@ -553,21 +625,55 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
   }
 
+  public sealed partial class ConnectionView : ObservableObject
+  {
+    public ConnectionView(RdpConnectionEntry entry)
+    {
+      Entry = entry;
+      Id = entry.Id;
+      Name = entry.Name;
+      Host = entry.Host;
+      Username = entry.Username;
+      Group = entry.Group;
+      PingStatus = "检测中";
+    }
+
+    public RdpConnectionEntry Entry { get; }
+
+    public Guid Id { get; }
+
+    public string Name { get; }
+
+    public string Host { get; }
+
+    public string Username { get; }
+
+    public string Group { get; }
+
+    [ObservableProperty]
+    private string pingStatus;
+
+    [ObservableProperty]
+    private bool isOnline;
+  }
+
   public sealed partial class GroupView : ObservableObject
   {
     public GroupView(string name, IReadOnlyList<RdpConnectionEntry> connections, bool isExpanded)
     {
       Name = name;
-      Connections = new ObservableCollection<RdpConnectionEntry>(connections);
+      Connections = new ObservableCollection<ConnectionView>(connections.Select(c => new ConnectionView(c)));
       Count = Connections.Count;
-      IsExpanded = isExpanded;
+      IsExpanded = isExpanded && Count > 0;
     }
 
     public string Name { get; }
 
-    public ObservableCollection<RdpConnectionEntry> Connections { get; }
+    public ObservableCollection<ConnectionView> Connections { get; }
 
     public int Count { get; }
+
+    public bool HasConnections => Count > 0;
 
     public bool CanManage => Name is not "未分组";
 
