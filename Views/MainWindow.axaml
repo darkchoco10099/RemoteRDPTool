@@ -7,7 +7,7 @@
         x:Class="RemoteRDPTool.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/logo.ico"
         Title="RemoteRDPTool"
         Background="#F6F8FB"
         MinWidth="1180"
@@ -88,6 +88,50 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
+        <Style Selector="ListBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBoxItem:selected">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.groupContainer">
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#D7DEE8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="BoxShadow" Value="0 6 18 0 #26000000" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="ClipToBounds" Value="false" />
+        </Style>
+        <Style Selector="Expander.groupExpander">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Border.groupHeader">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="14,14,14,14" />
+        </Style>
+        <Style Selector="Border.groupBody">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="14,14,14,14" />
+        </Style>
+        <Style Selector="Border.connectionCard">
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#D7DEE8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BoxShadow" Value="0 4 10 0 #34000000" />
+            <Setter Property="ClipToBounds" Value="False" />
+        </Style>
     </Window.Styles>
 
     <Design.DataContext>
@@ -142,59 +186,65 @@
             </Border>
 
             <ScrollViewer Grid.Row="1" Margin="14,12,14,12">
-                <ItemsControl ItemsSource="{Binding GroupViews}">
+                <ItemsControl ItemsSource="{Binding GroupViews}" HorizontalAlignment="Stretch">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,12">
-                                <Expander.Header>
-                                    <Border Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="10" Padding="12,8">
-                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#232A35" />
-                                    </Border>
-                                </Expander.Header>
-                                <Border Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="0,0,10,10" Padding="12,12,12,2">
-                                    <ListBox ItemsSource="{Binding Connections}"
-                                             SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
-                                             DoubleTapped="ConnectionsGrid_DoubleTapped">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Width="596" Background="#FFFFFF" BorderBrush="#D7DEE8" BorderThickness="1" CornerRadius="8" Margin="0,0,12,10" Padding="14,10">
-                                                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
-                                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
-                                                        <TextBlock Grid.Row="1" FontSize="12" Foreground="#2A2F36">
-                                                            <Run Text="{Binding Host}" />
-                                                            <Run Text=" - " />
-                                                            <Run Text="{Binding Username}" />
-                                                        </TextBlock>
-                                                        <Grid Grid.Row="2" ColumnDefinitions="*,1,*,1,*">
-                                                            <Button Classes="cardAction"
-                                                                    Content="Connect"
-                                                                    Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding Entry}" />
-                                                            <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
-                                                            <Button Grid.Column="2"
-                                                                    Classes="cardAction"
-                                                                    Content="Edit"
-                                                                    Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding Entry}" />
-                                                            <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
-                                                            <Button Grid.Column="4"
-                                                                    Classes="cardAction cardDelete"
-                                                                    Content="Delete"
-                                                                    Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding Entry}" />
+                            <Border Classes="groupContainer" Margin="0,0,0,12">
+                                <Expander Classes="groupExpander" IsExpanded="{Binding IsExpanded}">
+                                    <Expander.Header>
+                                        <Border Classes="groupHeader" Padding="12,8">
+                                            <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#232A35" />
+                                        </Border>
+                                    </Expander.Header>
+                                    <Border Classes="groupBody" Padding="12,12,12,2">
+                                        <ListBox ItemsSource="{Binding Connections}"
+                                                 SelectedItem="{Binding DataContext.SelectedConnection, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 DoubleTapped="ConnectionsGrid_DoubleTapped">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Classes="connectionCard" Margin="0,0,12,10" Padding="14,10" HorizontalAlignment="Stretch">
+                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
+                                                            <TextBlock Grid.Row="1" FontSize="12" Foreground="#2A2F36">
+                                                                <Run Text="{Binding Host}" />
+                                                                <Run Text=" - " />
+                                                                <Run Text="{Binding Username}" />
+                                                            </TextBlock>
+                                                            <TextBlock Grid.Row="2" FontSize="12" Foreground="#5A6A85">
+                                                                <Run Text="Ping: " />
+                                                                <Run Text="{Binding PingStatus}" />
+                                                            </TextBlock>
+                                                            <Grid Grid.Row="3" ColumnDefinitions="*,1,*,1,*">
+                                                                <Button Classes="cardAction"
+                                                                        Content="Connect"
+                                                                        Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding Entry}" />
+                                                                <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
+                                                                <Button Grid.Column="2"
+                                                                        Classes="cardAction"
+                                                                        Content="Edit"
+                                                                        Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding Entry}" />
+                                                                <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
+                                                                <Button Grid.Column="4"
+                                                                        Classes="cardAction cardDelete"
+                                                                        Content="Delete"
+                                                                        Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding Entry}" />
+                                                            </Grid>
                                                         </Grid>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Border>
-                            </Expander>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </Expander>
+                            </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
