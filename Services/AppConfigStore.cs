@@ -101,7 +101,11 @@ public sealed class FileAppConfigStore : IAppConfigStore
       data.Groups.Add(new RdpGroup { Name = "默认", Connections = [] });
 
     foreach (var group in data.Groups)
+    {
       group.Connections ??= [];
+      foreach (var connection in group.Connections)
+        connection.ShareDisk ??= string.Empty;
+    }
 
     data.Settings ??= new AppSettings();
     data.Settings.PingIntervalSeconds = Math.Max(2, data.Settings.PingIntervalSeconds);

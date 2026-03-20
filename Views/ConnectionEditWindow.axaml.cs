@@ -21,6 +21,7 @@ public partial class ConnectionEditWindow : Window
       Host = string.Empty,
       Username = string.Empty,
       Password = string.Empty,
+      ShareDisk = string.Empty,
       Group = "默认"
     };
 
@@ -38,6 +39,7 @@ public partial class ConnectionEditWindow : Window
     HostBox.Text = entry.Host;
     UserBox.Text = entry.Username;
     PasswordBox.Text = entry.Password ?? string.Empty;
+    ShareDiskBox.Text = entry.ShareDisk;
 
     var groupItems = groups.Distinct().Where(g => !string.IsNullOrWhiteSpace(g)).OrderBy(g => g).ToList();
     if (groupItems.Count == 0)
@@ -59,6 +61,7 @@ public partial class ConnectionEditWindow : Window
       Host = HostBox.Text?.Trim() ?? string.Empty,
       Username = UserBox.Text?.Trim() ?? string.Empty,
       Password = PasswordBox.Text,
+      ShareDisk = ShareDiskBox.Text?.Trim() ?? string.Empty,
       Group = group.Trim()
     };
 

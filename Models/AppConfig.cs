@@ -44,6 +44,8 @@ public sealed class RdpConnection
   public string Username { get; set; } = string.Empty;
 
   public string? Password { get; set; }
+
+  public string ShareDisk { get; set; } = string.Empty;
 }
 
 public sealed record RdpConnectionEntry
@@ -58,6 +60,8 @@ public sealed record RdpConnectionEntry
 
   public string? Password { get; init; }
 
+  public string ShareDisk { get; init; } = string.Empty;
+
   public string Group { get; init; } = "默认";
 
   public static RdpConnectionEntry FromConnection(string groupName, RdpConnection connection)
@@ -69,6 +73,7 @@ public sealed record RdpConnectionEntry
       Host = connection.Host,
       Username = connection.Username,
       Password = connection.Password,
+      ShareDisk = connection.ShareDisk,
       Group = groupName
     };
   }
@@ -81,7 +86,8 @@ public sealed record RdpConnectionEntry
       Name = Name,
       Host = Host,
       Username = Username,
-      Password = Password
+      Password = Password,
+      ShareDisk = ShareDisk
     };
   }
 }

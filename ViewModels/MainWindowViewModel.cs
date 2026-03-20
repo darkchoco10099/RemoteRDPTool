@@ -20,6 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private readonly IAppConfigStore _configStore;
   private readonly IAppSettingsStore _settingsStore;
   private readonly IRdpLauncher _rdpLauncher;
+  private readonly IShareDiskLauncher _shareDiskLauncher;
   private readonly IWindowService _windowService;
 
   private AppConfig _config = new();
@@ -27,18 +28,19 @@ public partial class MainWindowViewModel : ViewModelBase
   private bool _isApplyingSettings;
 
   public MainWindowViewModel()
-      : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignWindowService())
+      : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignShareDiskLauncher(), new DesignWindowService())
   {
     _config = CreateDesignConfig();
     RefreshGroups();
     RefreshConnections();
   }
 
-  public MainWindowViewModel(IAppConfigStore configStore, IAppSettingsStore settingsStore, IRdpLauncher rdpLauncher, IWindowService windowService)
+  public MainWindowViewModel(IAppConfigStore configStore, IAppSettingsStore settingsStore, IRdpLauncher rdpLauncher, IShareDiskLauncher shareDiskLauncher, IWindowService windowService)
   {
     _configStore = configStore;
     _settingsStore = settingsStore;
     _rdpLauncher = rdpLauncher;
+    _shareDiskLauncher = shareDiskLauncher;
     _windowService = windowService;
 
     Groups = new ObservableCollection<string>();
@@ -170,6 +172,7 @@ public partial class MainWindowViewModel : ViewModelBase
     EditConnectionCommand.NotifyCanExecuteChanged();
     DeleteConnectionCommand.NotifyCanExecuteChanged();
     ConnectCommand.NotifyCanExecuteChanged();
+    OpenShareDiskCommand.NotifyCanExecuteChanged();
   }
 
   [RelayCommand]
@@ -490,6 +493,69 @@ public partial class MainWindowViewModel : ViewModelBase
     await ConnectAsync();
   }
 
+  [RelayCommand(CanExecute = nameof(HasSelectedConnection))]
+  private async Task OpenShareDiskAsync()
+  {
+    try
+    {
+      if (SelectedConnection is null)
+        return;
+
+      var entry = SelectedConnection.Entry;
+      if (string.IsNullOrWhiteSpace(entry.Host))
+      {
+        await _windowService.ShowMessageAsync("打开共享盘失败", "未配置主机地址。");
+        return;
+      }
+
+      if (string.IsNullOrWhiteSpace(entry.ShareDisk))
+      {
+        await _windowService.ShowMessageAsync("打开共享盘失败", "未配置共享盘符。");
+        return;
+      }
+
+      var password = entry.Password;
+      var username = entry.Username;
+
+      if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+      {
+        var prompt = await _windowService.PromptCredentialAsync(entry);
+        if (prompt is null)
+          return;
+
+        username = prompt.Username;
+        password = prompt.Password;
+
+        if (prompt.SaveToConfig)
+        {
+          var updated = entry with { Username = username, Password = password };
+          RemoveConnectionById(entry.Id);
+          var group = GetOrCreateGroup(updated.Group);
+          group.Connections.Add(updated.ToConnection());
+          await _configStore.SaveAsync(_config);
+          RefreshConnections();
+          SelectedConnection = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == updated.Id);
+        }
+      }
+
+      await _shareDiskLauncher.OpenAsync(entry.Host, entry.ShareDisk, username, password);
+    }
+    catch (Exception ex)
+    {
+      await _windowService.ShowMessageAsync("打开共享盘失败", ex.Message);
+    }
+  }
+
+  [RelayCommand(AllowConcurrentExecutions = true)]
+  private async Task OpenShareDiskEntryAsync(RdpConnectionEntry entry)
+  {
+    var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
+    if (cv is null)
+      return;
+    SelectedConnection = cv;
+    await OpenShareDiskAsync();
+  }
+
   [RelayCommand]
   private void ShowConnectionsPage()
   {
@@ -591,6 +657,7 @@ public partial class MainWindowViewModel : ViewModelBase
               e.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
               e.Host.Contains(q, StringComparison.OrdinalIgnoreCase) ||
               (e.Username?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+              (e.ShareDisk?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
               (e.Group?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
           .ToList();
     }
@@ -609,6 +676,7 @@ public partial class MainWindowViewModel : ViewModelBase
     EditConnectionCommand.NotifyCanExecuteChanged();
     DeleteConnectionCommand.NotifyCanExecuteChanged();
     ConnectCommand.NotifyCanExecuteChanged();
+    OpenShareDiskCommand.NotifyCanExecuteChanged();
     RenameGroupCommand.NotifyCanExecuteChanged();
     DeleteGroupCommand.NotifyCanExecuteChanged();
   }
@@ -846,7 +914,8 @@ public partial class MainWindowViewModel : ViewModelBase
               Name = "测试服务器",
               Host = "10.0.0.8",
               Username = "Administrator",
-              Password = string.Empty
+              Password = string.Empty,
+              ShareDisk = "c$"
             }
           ]
         },
@@ -878,6 +947,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task LaunchAsync(string host, string? username, string? password) => Task.CompletedTask;
   }
 
+  private sealed class DesignShareDiskLauncher : IShareDiskLauncher
+  {
+    public Task OpenAsync(string host, string shareDisk, string? username, string? password) => Task.CompletedTask;
+  }
+
   private sealed class DesignWindowService : IWindowService
   {
     public Task<string?> PromptTextAsync(string title, string label, string initialText) => Task.FromResult<string?>(null);
@@ -900,6 +974,8 @@ public partial class MainWindowViewModel : ViewModelBase
       Name = entry.Name;
       Host = entry.Host;
       Username = entry.Username;
+      ShareDisk = entry.ShareDisk;
+      SharePathDisplay = string.IsNullOrWhiteSpace(entry.ShareDisk) ? string.Empty : $@"\\{entry.Host}\{entry.ShareDisk.Trim().TrimStart('\\', '/')}";
       Group = entry.Group;
       PingStatus = "检测中";
     }
@@ -913,6 +989,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public string Host { get; }
 
     public string Username { get; }
+
+    public string ShareDisk { get; }
+
+    public string SharePathDisplay { get; }
 
     public string Group { get; }
 

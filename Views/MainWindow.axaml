@@ -194,7 +194,7 @@
             <Border Background="#29282D" Padding="14,10" BorderBrush="#45444A" BorderThickness="0,0,0,1" IsVisible="{Binding IsConnectionPage}">
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="0">
                     <TextBox Classes="searchBox"
-                             Watermark="Search Name/IP/Account/Group"
+                             Watermark="Search Name/IP/Account/Share/Group"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
                     <Button Grid.Column="1"
                             Classes="searchAddMain"
@@ -251,7 +251,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Classes="connectionCard" Margin="0,0,12,10" Padding="14,10" HorizontalAlignment="Stretch" BorderBrush="{Binding PingBorderBrush}">
-                                                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
                                                             <Grid ColumnDefinitions="*,Auto">
                                                                 <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
                                                                 <TextBlock Grid.Column="1"
@@ -270,19 +270,26 @@
                                                                 <Run Text=" - " />
                                                                 <Run Text="{Binding Username}" />
                                                             </TextBlock>
-                                                            <Grid Grid.Row="2" ColumnDefinitions="*,1,*,1,*">
+                                                            <TextBlock Grid.Row="2" FontSize="12" Foreground="#5A6A85" Text="{Binding SharePathDisplay}" />
+                                                            <Grid Grid.Row="3" ColumnDefinitions="*,1,*,1,*,1,*">
                                                                 <Button Classes="cardAction"
-                                                                        Content="Connect"
+                                                                        Content="RDP"
                                                                         Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                                 <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="2"
                                                                         Classes="cardAction"
-                                                                        Content="Edit"
-                                                                        Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        Content="Shared"
+                                                                        Command="{Binding DataContext.OpenShareDiskEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                                 <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="4"
+                                                                        Classes="cardAction"
+                                                                        Content="Edit"
+                                                                        Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding Entry}" />
+                                                                <Border Grid.Column="5" Width="1" Background="#E1E6EE" Margin="6,0" />
+                                                                <Button Grid.Column="6"
                                                                         Classes="cardAction cardDelete"
                                                                         Content="Delete"
                                                                         Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
