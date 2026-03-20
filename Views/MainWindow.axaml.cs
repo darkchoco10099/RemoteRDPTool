@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -67,6 +69,30 @@ public partial class MainWindow : Window
 
     if (DataContext is MainWindowViewModel vm)
       vm.SelectedConnection = null;
+  }
+
+  private void SummonHotkeyInput_GotFocus(object? sender, GotFocusEventArgs e)
+  {
+    _hotkeyManager.IsPaused = true;
+  }
+
+  private void SummonHotkeyInput_LostFocus(object? sender, RoutedEventArgs e)
+  {
+    _hotkeyManager.IsPaused = false;
+  }
+
+  private void SummonHotkeyInput_KeyDown(object? sender, KeyEventArgs e)
+  {
+    e.Handled = true;
+    if (sender is not TextBox input)
+      return;
+
+    if (!TryBuildHotkeyText(e, out var hotkey))
+      return;
+
+    input.Text = hotkey;
+    if (_viewModel is not null)
+      _viewModel.SummonHotkey = hotkey;
   }
 
   private void OnWindowOpened(object? sender, EventArgs e)
@@ -170,6 +196,73 @@ public partial class MainWindow : Window
     return new WindowIcon(stream);
   }
 
+  private static bool TryBuildHotkeyText(KeyEventArgs e, out string hotkeyText)
+  {
+    hotkeyText = string.Empty;
+    var key = e.Key;
+    if (key == Key.None || key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt || key == Key.LeftShift || key == Key.RightShift || key == Key.LWin || key == Key.RWin)
+      return false;
+
+    var parts = new List<string>(5);
+    if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+      parts.Add("Ctrl");
+    if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+      parts.Add("Alt");
+    if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+      parts.Add("Shift");
+    if (e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+      parts.Add("Win");
+
+    if (parts.Count == 0)
+      return false;
+
+    if (!TryMapKeyToHotkeyToken(key, out var keyToken))
+      return false;
+
+    parts.Add(keyToken);
+    hotkeyText = string.Join("+", parts);
+    return true;
+  }
+
+  private static bool TryMapKeyToHotkeyToken(Key key, out string keyToken)
+  {
+    keyToken = string.Empty;
+    if (key is >= Key.A and <= Key.Z)
+    {
+      keyToken = key.ToString().ToUpperInvariant();
+      return true;
+    }
+
+    if (key is >= Key.D0 and <= Key.D9)
+    {
+      keyToken = ((char)('0' + (key - Key.D0))).ToString();
+      return true;
+    }
+
+    if (key is >= Key.NumPad0 and <= Key.NumPad9)
+    {
+      keyToken = ((char)('0' + (key - Key.NumPad0))).ToString();
+      return true;
+    }
+
+    if (key is >= Key.F1 and <= Key.F24)
+    {
+      keyToken = $"F{key - Key.F1 + 1}";
+      return true;
+    }
+
+    keyToken = key switch
+    {
+      Key.Space => "Space",
+      Key.Tab => "Tab",
+      Key.Enter => "Enter",
+      Key.Escape => "Esc",
+      _ => string.Empty
+    };
+
+    return !string.IsNullOrEmpty(keyToken);
+  }
+
   private sealed class GlobalHotkeyManager : IDisposable
   {
     private const int WhKeyboardLl = 13;
@@ -190,6 +283,7 @@ public partial class MainWindow : Window
     private bool _isMainKeyPressed;
 
     public event Action? Pressed;
+    public bool IsPaused { get; set; }
 
     public string Update(string text)
     {
@@ -234,7 +328,7 @@ public partial class MainWindow : Window
       {
         if (data.VkCode == _binding.VirtualKey && AreModifiersMatched(_binding.Modifiers))
         {
-          if (!_isMainKeyPressed)
+          if (!_isMainKeyPressed && !IsPaused)
           {
             _isMainKeyPressed = true;
             Pressed?.Invoke();
