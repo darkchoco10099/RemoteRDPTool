@@ -25,7 +25,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private AppConfig _config = new();
   private CancellationTokenSource? _pingTokenSource;
+  private CancellationTokenSource? _globalLoadingTokenSource;
+  private long _globalLoadingOperationId;
+  private bool _globalLoadingCanceledByUser;
   private bool _isApplyingSettings;
+  private const int GlobalLoadingTimeoutSeconds = 12;
 
   public MainWindowViewModel()
       : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignShareDiskLauncher(), new DesignWindowService())
@@ -481,7 +485,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
       }
 
-      await RunWithGlobalLoadingAsync("正在远程连接...", () => _rdpLauncher.LaunchAsync(entry.Host, username, password));
+      await RunWithGlobalLoadingAsync(
+          "正在远程连接...",
+          "远程连接超时，请重试。",
+          token => _rdpLauncher.LaunchAsync(entry.Host, username, password, token));
     }
     catch (Exception ex)
     {
@@ -544,7 +551,10 @@ public partial class MainWindowViewModel : ViewModelBase
         }
       }
 
-      await RunWithGlobalLoadingAsync("正在打开共享盘...", () => _shareDiskLauncher.OpenAsync(entry.Host, entry.ShareDisk, username, password));
+      await RunWithGlobalLoadingAsync(
+          "正在打开共享盘...",
+          "打开共享盘超时，请重试。",
+          token => _shareDiskLauncher.OpenAsync(entry.Host, entry.ShareDisk, username, password, token));
     }
     catch (Exception ex)
     {
@@ -633,21 +643,50 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private bool HasSelectedConnection() => SelectedConnection is not null;
 
-  private async Task RunWithGlobalLoadingAsync(string loadingText, Func<Task> action)
+  [RelayCommand(CanExecute = nameof(CanCancelGlobalLoading))]
+  private void CancelGlobalLoading()
+  {
+    _globalLoadingCanceledByUser = true;
+    _globalLoadingTokenSource?.Cancel();
+  }
+
+  private bool CanCancelGlobalLoading() => IsGlobalLoading;
+
+  partial void OnIsGlobalLoadingChanged(bool value)
+  {
+    CancelGlobalLoadingCommand.NotifyCanExecuteChanged();
+  }
+
+  private async Task RunWithGlobalLoadingAsync(string loadingText, string timeoutMessage, Func<CancellationToken, Task> action)
   {
     if (IsGlobalLoading)
       return;
 
+    var operationId = Interlocked.Increment(ref _globalLoadingOperationId);
+    _globalLoadingCanceledByUser = false;
+    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(GlobalLoadingTimeoutSeconds));
+    _globalLoadingTokenSource = timeoutCts;
     IsGlobalLoading = true;
     GlobalLoadingText = loadingText;
     try
     {
-      await action();
+      await action(timeoutCts.Token);
+    }
+    catch (OperationCanceledException) when (operationId == _globalLoadingOperationId)
+    {
+      if (!_globalLoadingCanceledByUser)
+      {
+        await _windowService.ShowMessageAsync("连接失败", timeoutMessage);
+      }
     }
     finally
     {
-      IsGlobalLoading = false;
-      GlobalLoadingText = string.Empty;
+      if (operationId == _globalLoadingOperationId)
+      {
+        IsGlobalLoading = false;
+        GlobalLoadingText = string.Empty;
+        _globalLoadingTokenSource = null;
+      }
     }
   }
 
@@ -968,12 +1007,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private sealed class DesignRdpLauncher : IRdpLauncher
   {
-    public Task LaunchAsync(string host, string? username, string? password) => Task.CompletedTask;
+    public Task LaunchAsync(string host, string? username, string? password, CancellationToken cancellationToken = default) => Task.CompletedTask;
   }
 
   private sealed class DesignShareDiskLauncher : IShareDiskLauncher
   {
-    public Task OpenAsync(string host, string shareDisk, string? username, string? password) => Task.CompletedTask;
+    public Task OpenAsync(string host, string shareDisk, string? username, string? password, CancellationToken cancellationToken = default) => Task.CompletedTask;
   }
 
   private sealed class DesignWindowService : IWindowService

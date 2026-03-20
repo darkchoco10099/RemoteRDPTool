@@ -3,23 +3,24 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RemoteRDPTool.Services;
 
 public interface IRdpLauncher
 {
-  Task LaunchAsync(string host, string? username, string? password);
+  Task LaunchAsync(string host, string? username, string? password, CancellationToken cancellationToken = default);
 }
 
 public interface IShareDiskLauncher
 {
-  Task OpenAsync(string host, string shareDisk, string? username, string? password);
+  Task OpenAsync(string host, string shareDisk, string? username, string? password, CancellationToken cancellationToken = default);
 }
 
 public sealed class WindowsRdpLauncher : IRdpLauncher
 {
-  public async Task LaunchAsync(string host, string? username, string? password)
+  public async Task LaunchAsync(string host, string? username, string? password, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(host))
       return;
@@ -28,18 +29,46 @@ public sealed class WindowsRdpLauncher : IRdpLauncher
 
     if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
     {
-      await RunAsync("cmdkey.exe", $"/generic:\"TERMSRV/{host}\" /user:\"{username}\" /pass:\"{password}\"");
+      await RunAsync("cmdkey.exe", $"/generic:\"TERMSRV/{host}\" /user:\"{username}\" /pass:\"{password}\"", cancellationToken);
     }
 
-    Process.Start(new ProcessStartInfo
+    var startedAt = DateTime.UtcNow;
+    using var process = Process.Start(new ProcessStartInfo
     {
       FileName = "mstsc.exe",
       Arguments = $"/v:{host}",
       UseShellExecute = true
     });
+
+    if (process is null)
+      throw new InvalidOperationException("无法启动远程桌面客户端。");
+
+    using var cancellationRegistration = RegisterKillOnCancel(process, startedAt, cancellationToken);
+    await WaitForMainWindowOrExitAsync(process, cancellationToken);
   }
 
-  private static async Task RunAsync(string fileName, string arguments)
+  private static async Task WaitForMainWindowOrExitAsync(Process process, CancellationToken cancellationToken)
+  {
+    while (true)
+    {
+      cancellationToken.ThrowIfCancellationRequested();
+
+      try
+      {
+        if (process.HasExited || process.MainWindowHandle != IntPtr.Zero)
+          return;
+        process.Refresh();
+      }
+      catch
+      {
+        return;
+      }
+
+      await Task.Delay(120, cancellationToken);
+    }
+  }
+
+  private static async Task RunAsync(string fileName, string arguments, CancellationToken cancellationToken)
   {
     using var process = Process.Start(new ProcessStartInfo
     {
@@ -52,13 +81,48 @@ public sealed class WindowsRdpLauncher : IRdpLauncher
     if (process is null)
       return;
 
-    await process.WaitForExitAsync();
+    await process.WaitForExitAsync(cancellationToken);
+  }
+
+  private static CancellationTokenRegistration RegisterKillOnCancel(Process process, DateTime startedAt, CancellationToken cancellationToken)
+  {
+    return cancellationToken.Register(() =>
+    {
+      if (!IsFreshProcess(process, startedAt))
+        return;
+      TryKillProcess(process);
+    });
+  }
+
+  private static bool IsFreshProcess(Process process, DateTime startedAt)
+  {
+    try
+    {
+      var started = process.StartTime.ToUniversalTime();
+      return started >= startedAt.AddSeconds(-1);
+    }
+    catch
+    {
+      return true;
+    }
+  }
+
+  private static void TryKillProcess(Process process)
+  {
+    try
+    {
+      if (!process.HasExited)
+        process.Kill(true);
+    }
+    catch
+    {
+    }
   }
 }
 
 public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
 {
-  public async Task OpenAsync(string host, string shareDisk, string? username, string? password)
+  public async Task OpenAsync(string host, string shareDisk, string? username, string? password, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(shareDisk))
       return;
@@ -68,32 +132,56 @@ public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
     if (string.IsNullOrWhiteSpace(path))
       return;
 
-    if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+    var connected = false;
+    try
     {
-      var connect = await ConnectShareAsync(path, username, password);
-      if (connect.ExitCode != 0 && IsMultipleCredentialConflict(connect))
+      if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
       {
-        await ClearHostSessionsAsync(normalizedHost);
-        connect = await ConnectShareAsync(path, username, password);
+        var connect = await ConnectShareAsync(path, username, password, cancellationToken);
         if (connect.ExitCode != 0 && IsMultipleCredentialConflict(connect))
         {
-          await RunAsync("net.exe", "use * /delete /y");
-          connect = await ConnectShareAsync(path, username, password);
+          await ClearHostSessionsAsync(normalizedHost, cancellationToken);
+          connect = await ConnectShareAsync(path, username, password, cancellationToken);
+          if (connect.ExitCode != 0 && IsMultipleCredentialConflict(connect))
+          {
+            await RunAsync("net.exe", "use * /delete /y", cancellationToken);
+            connect = await ConnectShareAsync(path, username, password, cancellationToken);
+          }
         }
+
+        if (connect.ExitCode != 0)
+        {
+          throw new InvalidOperationException(BuildNetUseError(path, username, connect));
+        }
+
+        connected = true;
       }
 
-      if (connect.ExitCode != 0)
+      cancellationToken.ThrowIfCancellationRequested();
+
+      var startedAt = DateTime.UtcNow;
+      using var explorer = Process.Start(new ProcessStartInfo
       {
-        throw new InvalidOperationException(BuildNetUseError(path, username, connect));
-      }
-    }
+        FileName = "explorer.exe",
+        Arguments = path,
+        UseShellExecute = true
+      });
 
-    Process.Start(new ProcessStartInfo
+      if (explorer is null)
+        throw new InvalidOperationException("无法启动文件管理器。");
+
+      using var cancellationRegistration = RegisterKillOnCancel(explorer, startedAt, cancellationToken);
+      await WaitForMainWindowOrExitAsync(explorer, cancellationToken);
+    }
+    catch (OperationCanceledException)
     {
-      FileName = "explorer.exe",
-      Arguments = path,
-      UseShellExecute = true
-    });
+      if (connected)
+      {
+        await RunAsync("net.exe", $"use \"{path}\" /delete /y", CancellationToken.None);
+      }
+
+      throw;
+    }
   }
 
   private static string BuildSharePath(string host, string shareDisk)
@@ -108,7 +196,7 @@ public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
     return $@"\\{host}\{cleaned}";
   }
 
-  private static async Task RunAsync(string fileName, string arguments)
+  private static async Task RunAsync(string fileName, string arguments, CancellationToken cancellationToken)
   {
     using var process = Process.Start(new ProcessStartInfo
     {
@@ -121,10 +209,66 @@ public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
     if (process is null)
       return;
 
-    await process.WaitForExitAsync();
+    await process.WaitForExitAsync(cancellationToken);
   }
 
-  private static async Task<CommandResult> RunWithOutputAsync(string fileName, string arguments)
+  private static async Task WaitForMainWindowOrExitAsync(Process process, CancellationToken cancellationToken)
+  {
+    while (true)
+    {
+      cancellationToken.ThrowIfCancellationRequested();
+
+      try
+      {
+        if (process.HasExited || process.MainWindowHandle != IntPtr.Zero)
+          return;
+        process.Refresh();
+      }
+      catch
+      {
+        return;
+      }
+
+      await Task.Delay(120, cancellationToken);
+    }
+  }
+
+  private static CancellationTokenRegistration RegisterKillOnCancel(Process process, DateTime startedAt, CancellationToken cancellationToken)
+  {
+    return cancellationToken.Register(() =>
+    {
+      if (!IsFreshProcess(process, startedAt))
+        return;
+      TryKillProcess(process);
+    });
+  }
+
+  private static bool IsFreshProcess(Process process, DateTime startedAt)
+  {
+    try
+    {
+      var started = process.StartTime.ToUniversalTime();
+      return started >= startedAt.AddSeconds(-1);
+    }
+    catch
+    {
+      return true;
+    }
+  }
+
+  private static void TryKillProcess(Process process)
+  {
+    try
+    {
+      if (!process.HasExited)
+        process.Kill(true);
+    }
+    catch
+    {
+    }
+  }
+
+  private static async Task<CommandResult> RunWithOutputAsync(string fileName, string arguments, CancellationToken cancellationToken)
   {
     using var process = Process.Start(new ProcessStartInfo
     {
@@ -141,14 +285,14 @@ public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
 
     var outputTask = process.StandardOutput.ReadToEndAsync();
     var errorTask = process.StandardError.ReadToEndAsync();
-    await process.WaitForExitAsync();
+    await process.WaitForExitAsync(cancellationToken);
     var output = await outputTask;
     var error = await errorTask;
     return new CommandResult(process.ExitCode, output, error);
   }
 
-  private static Task<CommandResult> ConnectShareAsync(string path, string username, string password)
-      => RunWithOutputAsync("net.exe", $"use \"{path}\" /user:\"{username}\" \"{password}\" /persistent:no");
+  private static Task<CommandResult> ConnectShareAsync(string path, string username, string password, CancellationToken cancellationToken)
+      => RunWithOutputAsync("net.exe", $"use \"{path}\" /user:\"{username}\" \"{password}\" /persistent:no", cancellationToken);
 
   private static bool IsMultipleCredentialConflict(CommandResult result)
   {
@@ -156,15 +300,15 @@ public sealed class WindowsShareDiskLauncher : IShareDiskLauncher
     return text.Contains("1219", StringComparison.OrdinalIgnoreCase);
   }
 
-  private static async Task ClearHostSessionsAsync(string host)
+  private static async Task ClearHostSessionsAsync(string host, CancellationToken cancellationToken)
   {
-    var list = await RunWithOutputAsync("net.exe", "use");
+    var list = await RunWithOutputAsync("net.exe", "use", cancellationToken);
     var targets = ExtractHostTargets(list.Output, host);
     targets.Add($@"\\{host}\IPC$");
 
     foreach (var target in targets.Distinct(StringComparer.OrdinalIgnoreCase))
     {
-      await RunAsync("net.exe", $"use \"{target}\" /delete /y");
+      await RunAsync("net.exe", $"use \"{target}\" /delete /y", cancellationToken);
     }
   }
 

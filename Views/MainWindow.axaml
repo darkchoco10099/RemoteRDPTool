@@ -377,10 +377,22 @@
                                FontSize="15"
                                FontWeight="SemiBold"
                                Foreground="#1B1F24" />
-                    <TextBlock Text="请稍候，检测到响应后会自动关闭"
+                    <TextBlock Text="请稍候，超时会自动关闭，也可手动取消"
                                HorizontalAlignment="Center"
                                FontSize="12"
                                Foreground="#5A6A85" />
+                    <Button HorizontalAlignment="Center"
+                            Width="96"
+                            Height="34"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="#29282D"
+                            BorderBrush="#4A4950"
+                            Foreground="#EAF0FC"
+                            CornerRadius="8"
+                            Content="取消"
+                            Command="{Binding CancelGlobalLoadingCommand}" />
                 </StackPanel>
             </Border>
         </Border>
