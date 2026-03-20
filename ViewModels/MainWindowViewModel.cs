@@ -18,23 +18,26 @@ namespace RemoteRDPTool.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase
 {
   private readonly IAppConfigStore _configStore;
+  private readonly IAppSettingsStore _settingsStore;
   private readonly IRdpLauncher _rdpLauncher;
   private readonly IWindowService _windowService;
 
   private AppConfig _config = new();
   private CancellationTokenSource? _pingTokenSource;
+  private bool _isApplyingSettings;
 
   public MainWindowViewModel()
-      : this(new DesignAppConfigStore(), new DesignRdpLauncher(), new DesignWindowService())
+      : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignWindowService())
   {
     _config = CreateDesignConfig();
     RefreshGroups();
     RefreshConnections();
   }
 
-  public MainWindowViewModel(IAppConfigStore configStore, IRdpLauncher rdpLauncher, IWindowService windowService)
+  public MainWindowViewModel(IAppConfigStore configStore, IAppSettingsStore settingsStore, IRdpLauncher rdpLauncher, IWindowService windowService)
   {
     _configStore = configStore;
+    _settingsStore = settingsStore;
     _rdpLauncher = rdpLauncher;
     _windowService = windowService;
 
@@ -60,8 +63,33 @@ public partial class MainWindowViewModel : ViewModelBase
   [ObservableProperty]
   private ConnectionView? selectedConnection;
 
+  [ObservableProperty]
+  private bool isConnectionPage = true;
+
+  [ObservableProperty]
+  private bool isSettingsPage;
+
+  [ObservableProperty]
+  private bool autoReducePingFrequency = true;
+
+  [ObservableProperty]
+  private int pingIntervalSeconds = 5;
+
+  [ObservableProperty]
+  private int reducedPingIntervalSeconds = 8;
+
   public async Task InitializeAsync()
   {
+    try
+    {
+      var settings = await _settingsStore.LoadAsync();
+      ApplySettings(settings);
+    }
+    catch (Exception ex)
+    {
+      await _windowService.ShowMessageAsync("加载设置失败", $"{ex.Message}\n\n{_settingsStore.ConfigPath}");
+    }
+
     try
     {
       _config = await _configStore.LoadAsync();
@@ -82,6 +110,8 @@ public partial class MainWindowViewModel : ViewModelBase
     try
     {
       _pingTokenSource?.Cancel();
+      var settings = await _settingsStore.LoadAsync();
+      ApplySettings(settings);
       _config = await _configStore.LoadAsync();
       RefreshGroups();
       RefreshConnections();
@@ -441,6 +471,60 @@ public partial class MainWindowViewModel : ViewModelBase
     await ConnectAsync();
   }
 
+  [RelayCommand]
+  private void ShowConnectionsPage()
+  {
+    IsConnectionPage = true;
+    IsSettingsPage = false;
+  }
+
+  [RelayCommand]
+  private void ShowSettingsPage()
+  {
+    IsConnectionPage = false;
+    IsSettingsPage = true;
+  }
+
+  [RelayCommand(AllowConcurrentExecutions = true)]
+  private async Task CheckEntryAsync(RdpConnectionEntry entry)
+  {
+    var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
+    if (cv is null)
+      return;
+
+    await ProbeConnectionAsync(cv);
+  }
+
+  partial void OnAutoReducePingFrequencyChanged(bool value)
+  {
+    if (_isApplyingSettings)
+      return;
+    ResetPingSchedule();
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnPingIntervalSecondsChanged(int value)
+  {
+    if (value < 2)
+      PingIntervalSeconds = 2;
+    if (ReducedPingIntervalSeconds < PingIntervalSeconds)
+      ReducedPingIntervalSeconds = PingIntervalSeconds;
+    if (_isApplyingSettings)
+      return;
+    ResetPingSchedule();
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnReducedPingIntervalSecondsChanged(int value)
+  {
+    if (value < PingIntervalSeconds)
+      ReducedPingIntervalSeconds = PingIntervalSeconds;
+    if (_isApplyingSettings)
+      return;
+    ResetPingSchedule();
+    _ = PersistSettingsAsync();
+  }
+
   private bool HasSelectedConnection() => SelectedConnection is not null;
 
   private void RefreshGroups()
@@ -525,58 +609,121 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private async Task PingLoopAsync(CancellationToken token)
   {
-    using var ping = new Ping();
-
     while (!token.IsCancellationRequested)
     {
       var snapshot = GroupViews
           .SelectMany(g => g.Connections)
           .ToList();
 
+      var now = DateTime.UtcNow;
       foreach (var conn in snapshot)
       {
         if (token.IsCancellationRequested)
           break;
 
-        var host = conn.Host;
-        if (string.IsNullOrWhiteSpace(host))
-        {
-          await Dispatcher.UIThread.InvokeAsync(() =>
-          {
-            conn.IsOnline = false;
-            conn.PingStatus = "未配置";
-          });
+        if (now < conn.NextPingAtUtc || conn.IsChecking)
           continue;
-        }
 
-        try
-        {
-          var reply = await ping.SendPingAsync(host, 1000);
-          var ok = reply.Status == IPStatus.Success;
-          await Dispatcher.UIThread.InvokeAsync(() =>
-          {
-            conn.IsOnline = ok;
-            conn.PingStatus = ok ? "在线" : "不可达";
-          });
-        }
-        catch
-        {
-          await Dispatcher.UIThread.InvokeAsync(() =>
-          {
-            conn.IsOnline = false;
-            conn.PingStatus = "错误";
-          });
-        }
+        await ProbeConnectionAsync(conn);
       }
 
       try
       {
-        await Task.Delay(TimeSpan.FromSeconds(5), token);
+        await Task.Delay(TimeSpan.FromSeconds(1), token);
       }
       catch (TaskCanceledException)
       {
         break;
       }
+    }
+  }
+
+  private async Task ProbeConnectionAsync(ConnectionView conn)
+  {
+    await Dispatcher.UIThread.InvokeAsync(() => conn.IsChecking = true);
+    var host = conn.Host;
+    if (string.IsNullOrWhiteSpace(host))
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsChecking = false;
+        conn.IsOnline = false;
+        conn.PingStatus = "未配置";
+        conn.PingBorderBrush = "#E2B93B";
+        conn.ConsecutiveFailureCount++;
+        conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+      });
+      return;
+    }
+
+    try
+    {
+      using var ping = new Ping();
+      var reply = await ping.SendPingAsync(host, 1000);
+      var ok = reply.Status == IPStatus.Success;
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsChecking = false;
+        conn.IsOnline = ok;
+        conn.PingStatus = ok ? "在线" : "不可达";
+        conn.PingBorderBrush = ok ? "#2EAD5A" : "#D9534F";
+        conn.ConsecutiveFailureCount = ok ? 0 : conn.ConsecutiveFailureCount + 1;
+        conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+      });
+    }
+    catch
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsChecking = false;
+        conn.IsOnline = false;
+        conn.PingStatus = "错误";
+        conn.PingBorderBrush = "#E2B93B";
+        conn.ConsecutiveFailureCount++;
+        conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+      });
+    }
+  }
+
+  private TimeSpan GetPingInterval(int consecutiveFailureCount)
+  {
+    var normal = TimeSpan.FromSeconds(PingIntervalSeconds);
+    var reduced = TimeSpan.FromSeconds(ReducedPingIntervalSeconds);
+    if (AutoReducePingFrequency && consecutiveFailureCount >= 3)
+      return reduced;
+    return normal;
+  }
+
+  private void ResetPingSchedule()
+  {
+    foreach (var conn in GroupViews.SelectMany(g => g.Connections))
+      conn.NextPingAtUtc = DateTime.MinValue;
+  }
+
+  private void ApplySettings(AppSettings settings)
+  {
+    _isApplyingSettings = true;
+    AutoReducePingFrequency = settings.AutoReducePingFrequency;
+    PingIntervalSeconds = settings.PingIntervalSeconds;
+    ReducedPingIntervalSeconds = settings.ReducedPingIntervalSeconds;
+    _isApplyingSettings = false;
+    ResetPingSchedule();
+  }
+
+  private async Task PersistSettingsAsync()
+  {
+    try
+    {
+      var settings = new AppSettings
+      {
+        AutoReducePingFrequency = AutoReducePingFrequency,
+        PingIntervalSeconds = PingIntervalSeconds,
+        ReducedPingIntervalSeconds = ReducedPingIntervalSeconds
+      };
+      await _settingsStore.SaveAsync(settings);
+    }
+    catch
+    {
     }
   }
 
@@ -639,6 +786,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task SaveAsync(AppConfig config) => Task.CompletedTask;
   }
 
+  private sealed class DesignAppSettingsStore : IAppSettingsStore
+  {
+    public string ConfigPath => "rdp-settings.json";
+
+    public Task<AppSettings> LoadAsync() => Task.FromResult(new AppSettings());
+
+    public Task SaveAsync(AppSettings settings) => Task.CompletedTask;
+  }
+
   private sealed class DesignRdpLauncher : IRdpLauncher
   {
     public Task LaunchAsync(string host, string? username, string? password) => Task.CompletedTask;
@@ -684,7 +840,46 @@ public partial class MainWindowViewModel : ViewModelBase
     private string pingStatus;
 
     [ObservableProperty]
+    private string pingBorderBrush = "#E2B93B";
+
+    [ObservableProperty]
+    private bool isChecking;
+
+    [ObservableProperty]
     private bool isOnline;
+
+    [ObservableProperty]
+    private int consecutiveFailureCount;
+
+    [ObservableProperty]
+    private DateTime nextPingAtUtc = DateTime.MinValue;
+
+    [ObservableProperty]
+    private bool canManualCheck;
+
+    [ObservableProperty]
+    private bool showQuickCheck;
+
+    partial void OnPingStatusChanged(string value)
+    {
+      PingBorderBrush = value switch
+      {
+        "在线" => "#2EAD5A",
+        "不可达" => "#D9534F",
+        _ => "#E2B93B"
+      };
+      UpdateCanManualCheck();
+    }
+
+    partial void OnIsCheckingChanged(bool value) => UpdateCanManualCheck();
+
+    partial void OnIsOnlineChanged(bool value) => UpdateCanManualCheck();
+
+    private void UpdateCanManualCheck()
+    {
+      CanManualCheck = !IsChecking && !IsOnline && !string.IsNullOrWhiteSpace(Host);
+      ShowQuickCheck = CanManualCheck && PingStatus == "不可达";
+    }
   }
 
   public sealed partial class GroupView : ObservableObject

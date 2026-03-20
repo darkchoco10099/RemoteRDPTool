@@ -31,6 +31,7 @@ public partial class App : Application
 
       var appDir = AppContext.BaseDirectory;
       var configPath = Path.Combine(appDir, "rdp-connections.json");
+      var settingsPath = Path.Combine(appDir, "rdp-settings.json");
 
       var appDataConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RemoteRDPTool");
       var appDataConfigPath = Path.Combine(appDataConfigDir, "rdp-connections.json");
@@ -51,9 +52,10 @@ public partial class App : Application
       }
 
       var configStore = new FileAppConfigStore(configPath);
+      var settingsStore = new FileAppSettingsStore(settingsPath);
       var rdpLauncher = new WindowsRdpLauncher();
       var windowService = new WindowService();
-      var vm = new MainWindowViewModel(configStore, rdpLauncher, windowService);
+      var vm = new MainWindowViewModel(configStore, settingsStore, rdpLauncher, windowService);
 
       desktop.MainWindow = new MainWindow
       {
