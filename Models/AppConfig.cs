@@ -22,6 +22,8 @@ public sealed class AppSettings
   public int PingIntervalSeconds { get; set; } = 5;
 
   public int ReducedPingIntervalSeconds { get; set; } = 8;
+
+  public string SummonHotkey { get; set; } = "Ctrl+R";
 }
 
 public sealed class RdpGroup

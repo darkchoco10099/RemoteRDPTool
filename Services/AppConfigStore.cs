@@ -106,6 +106,10 @@ public sealed class FileAppConfigStore : IAppConfigStore
     data.Settings ??= new AppSettings();
     data.Settings.PingIntervalSeconds = Math.Max(2, data.Settings.PingIntervalSeconds);
     data.Settings.ReducedPingIntervalSeconds = Math.Max(data.Settings.PingIntervalSeconds, data.Settings.ReducedPingIntervalSeconds);
+    if (string.IsNullOrWhiteSpace(data.Settings.SummonHotkey))
+      data.Settings.SummonHotkey = "Ctrl+R";
+    else
+      data.Settings.SummonHotkey = data.Settings.SummonHotkey.Trim();
   }
 }
 

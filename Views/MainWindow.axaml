@@ -319,6 +319,16 @@
                         <TextBlock Grid.Column="3" Text="降频间隔(秒)" VerticalAlignment="Center" />
                         <TextBox Grid.Column="4" Text="{Binding ReducedPingIntervalSeconds}" HorizontalContentAlignment="Center" />
                     </Grid>
+                    <Separator Margin="0,6,0,4" />
+                    <TextBlock Text="快捷键设置" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
+                    <TextBlock Text="用于唤出或最小化窗口，默认 Ctrl+R" FontSize="13" Foreground="#5A6A85" />
+                    <Grid ColumnDefinitions="Auto,180,*" VerticalAlignment="Center">
+                        <TextBlock Text="唤出快捷键" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Margin="10,0,0,0"
+                                 Watermark="Ctrl+R"
+                                 Text="{Binding SummonHotkey, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
                 </StackPanel>
             </Border>
         </Grid>

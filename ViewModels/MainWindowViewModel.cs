@@ -78,6 +78,9 @@ public partial class MainWindowViewModel : ViewModelBase
   [ObservableProperty]
   private int reducedPingIntervalSeconds = 8;
 
+  [ObservableProperty]
+  private string summonHotkey = "Ctrl+R";
+
   public async Task InitializeAsync()
   {
     try
@@ -541,6 +544,21 @@ public partial class MainWindowViewModel : ViewModelBase
     _ = PersistSettingsAsync();
   }
 
+  partial void OnSummonHotkeyChanged(string value)
+  {
+    if (_isApplyingSettings)
+      return;
+
+    var normalized = string.IsNullOrWhiteSpace(value) ? "Ctrl+R" : value.Trim();
+    if (!string.Equals(value, normalized, StringComparison.Ordinal))
+    {
+      SummonHotkey = normalized;
+      return;
+    }
+
+    _ = PersistSettingsAsync();
+  }
+
   private bool HasSelectedConnection() => SelectedConnection is not null;
 
   private void RefreshGroups()
@@ -764,6 +782,7 @@ public partial class MainWindowViewModel : ViewModelBase
     AutoReducePingFrequency = settings.AutoReducePingFrequency;
     PingIntervalSeconds = settings.PingIntervalSeconds;
     ReducedPingIntervalSeconds = settings.ReducedPingIntervalSeconds;
+    SummonHotkey = string.IsNullOrWhiteSpace(settings.SummonHotkey) ? "Ctrl+R" : settings.SummonHotkey.Trim();
     _isApplyingSettings = false;
     ResetPingSchedule();
   }
@@ -776,7 +795,8 @@ public partial class MainWindowViewModel : ViewModelBase
       {
         AutoReducePingFrequency = AutoReducePingFrequency,
         PingIntervalSeconds = PingIntervalSeconds,
-        ReducedPingIntervalSeconds = ReducedPingIntervalSeconds
+        ReducedPingIntervalSeconds = ReducedPingIntervalSeconds,
+        SummonHotkey = string.IsNullOrWhiteSpace(SummonHotkey) ? "Ctrl+R" : SummonHotkey.Trim()
       };
       await _settingsStore.SaveAsync(settings);
     }
