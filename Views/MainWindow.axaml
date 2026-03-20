@@ -353,5 +353,36 @@
                 <Button Grid.Column="2" Classes="footerButton" Content="Refresh" Command="{Binding ReloadConfigCommand}" />
             </Grid>
         </Border>
+
+        <Border Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                ZIndex="999"
+                Background="#700A111A"
+                IsVisible="{Binding IsGlobalLoading}">
+            <Border Width="320"
+                    Padding="22,18"
+                    CornerRadius="12"
+                    BorderBrush="#D7DEE8"
+                    BorderThickness="1"
+                    Background="#FFFFFF"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="detectingSpinner"
+                               HorizontalAlignment="Center"
+                               FontSize="28"
+                               Text="◔" />
+                    <TextBlock Text="{Binding GlobalLoadingText}"
+                               HorizontalAlignment="Center"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="#1B1F24" />
+                    <TextBlock Text="请稍候，检测到响应后会自动关闭"
+                               HorizontalAlignment="Center"
+                               FontSize="12"
+                               Foreground="#5A6A85" />
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Window>

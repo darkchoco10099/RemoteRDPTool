@@ -72,6 +72,12 @@ public partial class MainWindowViewModel : ViewModelBase
   private bool isSettingsPage;
 
   [ObservableProperty]
+  private bool isGlobalLoading;
+
+  [ObservableProperty]
+  private string globalLoadingText = string.Empty;
+
+  [ObservableProperty]
   private bool autoReducePingFrequency = true;
 
   [ObservableProperty]
@@ -475,7 +481,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
       }
 
-      await _rdpLauncher.LaunchAsync(entry.Host, username, password);
+      await RunWithGlobalLoadingAsync("正在远程连接...", () => _rdpLauncher.LaunchAsync(entry.Host, username, password));
     }
     catch (Exception ex)
     {
@@ -538,7 +544,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
       }
 
-      await _shareDiskLauncher.OpenAsync(entry.Host, entry.ShareDisk, username, password);
+      await RunWithGlobalLoadingAsync("正在打开共享盘...", () => _shareDiskLauncher.OpenAsync(entry.Host, entry.ShareDisk, username, password));
     }
     catch (Exception ex)
     {
@@ -626,6 +632,24 @@ public partial class MainWindowViewModel : ViewModelBase
   }
 
   private bool HasSelectedConnection() => SelectedConnection is not null;
+
+  private async Task RunWithGlobalLoadingAsync(string loadingText, Func<Task> action)
+  {
+    if (IsGlobalLoading)
+      return;
+
+    IsGlobalLoading = true;
+    GlobalLoadingText = loadingText;
+    try
+    {
+      await action();
+    }
+    finally
+    {
+      IsGlobalLoading = false;
+      GlobalLoadingText = string.Empty;
+    }
+  }
 
   private void RefreshGroups()
   {
