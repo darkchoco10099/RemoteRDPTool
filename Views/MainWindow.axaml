@@ -210,7 +210,10 @@
                 </Grid>
             </Border>
 
-            <ScrollViewer Grid.Row="1" Margin="14,12,14,12" IsVisible="{Binding IsConnectionPage}">
+            <ScrollViewer Grid.Row="1"
+                          Margin="14,12,14,12"
+                          IsVisible="{Binding IsConnectionPage}"
+                          PointerPressed="ConnectionsArea_PointerPressed">
                 <ItemsControl ItemsSource="{Binding GroupViews}" HorizontalAlignment="Stretch">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

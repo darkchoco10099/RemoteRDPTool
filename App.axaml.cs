@@ -30,13 +30,12 @@ public partial class App : Application
       DisableAvaloniaDataAnnotationValidation();
 
       var appDir = AppContext.BaseDirectory;
-      var configPath = Path.Combine(appDir, "rdp-connections.json");
-      var settingsPath = Path.Combine(appDir, "rdp-settings.json");
+      var configPath = Path.Combine(appDir, "rdp-config.json");
 
       var appDataConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RemoteRDPTool");
-      var appDataConfigPath = Path.Combine(appDataConfigDir, "rdp-connections.json");
+      var appDataConfigPath = Path.Combine(appDataConfigDir, "rdp-config.json");
 
-      var legacyConfigPath = Path.Combine(Environment.CurrentDirectory, "rdp-connections.json");
+      var legacyConfigPath = Path.Combine(Environment.CurrentDirectory, "rdp-config.json");
       if (!File.Exists(configPath) || (CountConnections(configPath) == 0 && CountConnections(appDataConfigPath) > 0))
       {
         if (File.Exists(appDataConfigPath))
@@ -52,7 +51,7 @@ public partial class App : Application
       }
 
       var configStore = new FileAppConfigStore(configPath);
-      var settingsStore = new FileAppSettingsStore(settingsPath);
+      var settingsStore = new FileAppSettingsStore(configPath);
       var rdpLauncher = new WindowsRdpLauncher();
       var windowService = new WindowService();
       var vm = new MainWindowViewModel(configStore, settingsStore, rdpLauncher, windowService);

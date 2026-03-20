@@ -8,6 +8,13 @@ public sealed class AppConfig
   public List<RdpGroup> Groups { get; set; } = [];
 }
 
+public sealed class AppData
+{
+  public List<RdpGroup> Groups { get; set; } = [];
+
+  public AppSettings Settings { get; set; } = new();
+}
+
 public sealed class AppSettings
 {
   public bool AutoReducePingFrequency { get; set; } = true;

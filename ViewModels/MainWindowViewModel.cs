@@ -837,7 +837,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private sealed class DesignAppConfigStore : IAppConfigStore
   {
-    public string ConfigPath => "rdp-connections.json";
+    public string ConfigPath => "rdp-config.json";
 
     public Task<AppConfig> LoadAsync() => Task.FromResult(CreateDesignConfig());
 
@@ -846,7 +846,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
   private sealed class DesignAppSettingsStore : IAppSettingsStore
   {
-    public string ConfigPath => "rdp-settings.json";
+    public string ConfigPath => "rdp-config.json";
 
     public Task<AppSettings> LoadAsync() => Task.FromResult(new AppSettings());
 

@@ -41,58 +41,76 @@ public sealed class FileAppConfigStore : IAppConfigStore
 
   public async Task<AppConfig> LoadAsync()
   {
-    if (!File.Exists(ConfigPath))
+    var data = await LoadDataAsync(ConfigPath);
+    return new AppConfig
     {
-      var dir = Path.GetDirectoryName(ConfigPath);
-      if (!string.IsNullOrWhiteSpace(dir))
-        Directory.CreateDirectory(dir);
-
-      var initial = new AppConfig
-      {
-        Groups =
-          [
-              new RdpGroup { Name = "默认", Connections = [] }
-          ]
-      };
-
-      await SaveAsync(initial);
-      return initial;
-    }
-
-    await using var stream = File.OpenRead(ConfigPath);
-    var config = await JsonSerializer.DeserializeAsync<AppConfig>(stream, JsonOptions);
-    if (config is null)
-      return new AppConfig();
-
-    config.Groups ??= [];
-    if (config.Groups.Count == 0)
-      config.Groups.Add(new RdpGroup { Name = "默认", Connections = [] });
-
-    return config;
+      Groups = data.Groups
+    };
   }
 
   public async Task SaveAsync(AppConfig config)
   {
-    var dir = Path.GetDirectoryName(ConfigPath);
+    var data = await LoadDataAsync(ConfigPath);
+    data.Groups = config.Groups ?? [];
+    EnsureValidData(data);
+    await SaveDataAsync(ConfigPath, data);
+  }
+
+  internal static async Task<AppData> LoadDataAsync(string path)
+  {
+    if (!File.Exists(path))
+    {
+      var initial = CreateInitialData();
+      await SaveDataAsync(path, initial);
+      return initial;
+    }
+
+    await using var stream = File.OpenRead(path);
+    var data = await JsonSerializer.DeserializeAsync<AppData>(stream, JsonOptions) ?? CreateInitialData();
+    EnsureValidData(data);
+    return data;
+  }
+
+  internal static async Task SaveDataAsync(string path, AppData data)
+  {
+    EnsureValidData(data);
+    var dir = Path.GetDirectoryName(path);
     if (!string.IsNullOrWhiteSpace(dir))
       Directory.CreateDirectory(dir);
 
-    var json = JsonSerializer.Serialize(config, JsonOptions);
-    await File.WriteAllTextAsync(ConfigPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    var json = JsonSerializer.Serialize(data, JsonOptions);
+    await File.WriteAllTextAsync(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+  }
+
+  internal static AppData CreateInitialData()
+  {
+    return new AppData
+    {
+      Groups =
+      [
+        new RdpGroup { Name = "默认", Connections = [] }
+      ],
+      Settings = new AppSettings()
+    };
+  }
+
+  internal static void EnsureValidData(AppData data)
+  {
+    data.Groups ??= [];
+    if (data.Groups.Count == 0)
+      data.Groups.Add(new RdpGroup { Name = "默认", Connections = [] });
+
+    foreach (var group in data.Groups)
+      group.Connections ??= [];
+
+    data.Settings ??= new AppSettings();
+    data.Settings.PingIntervalSeconds = Math.Max(2, data.Settings.PingIntervalSeconds);
+    data.Settings.ReducedPingIntervalSeconds = Math.Max(data.Settings.PingIntervalSeconds, data.Settings.ReducedPingIntervalSeconds);
   }
 }
 
 public sealed class FileAppSettingsStore : IAppSettingsStore
 {
-  private static readonly JsonSerializerOptions JsonOptions = new()
-  {
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    PropertyNameCaseInsensitive = true,
-    AllowTrailingCommas = true,
-    ReadCommentHandling = JsonCommentHandling.Skip,
-    WriteIndented = true
-  };
-
   public FileAppSettingsStore(string configPath)
   {
     ConfigPath = configPath;
@@ -102,29 +120,15 @@ public sealed class FileAppSettingsStore : IAppSettingsStore
 
   public async Task<AppSettings> LoadAsync()
   {
-    if (!File.Exists(ConfigPath))
-    {
-      var initial = new AppSettings();
-      await SaveAsync(initial);
-      return initial;
-    }
-
-    await using var stream = File.OpenRead(ConfigPath);
-    var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream, JsonOptions) ?? new AppSettings();
-    settings.PingIntervalSeconds = Math.Max(2, settings.PingIntervalSeconds);
-    settings.ReducedPingIntervalSeconds = Math.Max(settings.PingIntervalSeconds, settings.ReducedPingIntervalSeconds);
-    return settings;
+    var data = await FileAppConfigStore.LoadDataAsync(ConfigPath);
+    return data.Settings;
   }
 
   public async Task SaveAsync(AppSettings settings)
   {
-    var dir = Path.GetDirectoryName(ConfigPath);
-    if (!string.IsNullOrWhiteSpace(dir))
-      Directory.CreateDirectory(dir);
-
-    settings.PingIntervalSeconds = Math.Max(2, settings.PingIntervalSeconds);
-    settings.ReducedPingIntervalSeconds = Math.Max(settings.PingIntervalSeconds, settings.ReducedPingIntervalSeconds);
-    var json = JsonSerializer.Serialize(settings, JsonOptions);
-    await File.WriteAllTextAsync(ConfigPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    var data = await FileAppConfigStore.LoadDataAsync(ConfigPath);
+    data.Settings = settings ?? new AppSettings();
+    FileAppConfigStore.EnsureValidData(data);
+    await FileAppConfigStore.SaveDataAsync(ConfigPath, data);
   }
 }
