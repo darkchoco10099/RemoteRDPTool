@@ -118,6 +118,13 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="14,14,14,14" />
         </Style>
+        <Style Selector="Button.groupHeaderAction">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="#5A6A85" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
         <Style Selector="Border.groupBody">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -211,7 +218,21 @@
                                 <Expander Classes="groupExpander" IsExpanded="{Binding IsExpanded}">
                                     <Expander.Header>
                                         <Border Classes="groupHeader" Padding="12,8">
-                                            <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#232A35" />
+                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#232A35" />
+                                                <Button Grid.Column="1"
+                                                        Classes="groupHeaderAction"
+                                                        Content="Rename"
+                                                        IsVisible="{Binding CanManage}"
+                                                        Command="{Binding DataContext.RenameGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding Name}" />
+                                                <Button Grid.Column="2"
+                                                        Classes="groupHeaderAction"
+                                                        Content="Delete"
+                                                        IsVisible="{Binding CanManage}"
+                                                        Command="{Binding DataContext.DeleteGroupByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding Name}" />
+                                            </Grid>
                                         </Border>
                                     </Expander.Header>
                                     <Border Classes="groupBody" Padding="12,12,12,2">

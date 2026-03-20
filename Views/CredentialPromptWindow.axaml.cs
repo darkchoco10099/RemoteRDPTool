@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using RemoteRDPTool.Models;
 using RemoteRDPTool.Services;
 
@@ -41,5 +42,10 @@ public partial class CredentialPromptWindow : Window
   private void Cancel_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
   {
     Close(null);
+  }
+
+  private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+  {
+    BeginMoveDrag(e);
   }
 }

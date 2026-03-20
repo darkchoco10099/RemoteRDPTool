@@ -16,6 +16,7 @@ public interface IWindowService
   Task<RdpConnectionEntry?> EditConnectionAsync(RdpConnectionEntry entry, IReadOnlyList<string> groups);
   Task<CredentialPromptResult?> PromptCredentialAsync(RdpConnectionEntry entry);
   Task ShowMessageAsync(string title, string message);
+  Task<bool> ConfirmAsync(string title, string message, string confirmText);
 }
 
 public sealed class WindowService : IWindowService
@@ -66,5 +67,16 @@ public sealed class WindowService : IWindowService
 
     var window = new TextPromptWindow(title, string.Empty, message, readOnly: true, showCancel: false, okText: "确定");
     await window.ShowDialog<string?>(owner);
+  }
+
+  public async Task<bool> ConfirmAsync(string title, string message, string confirmText)
+  {
+    var owner = GetMainWindow();
+    if (owner is null)
+      return false;
+
+    var window = new TextPromptWindow(title, string.Empty, message, readOnly: true, showCancel: true, okText: confirmText);
+    var result = await window.ShowDialog<string?>(owner);
+    return result is not null;
   }
 }

@@ -4,15 +4,80 @@
         Width="420"
         SizeToContent="Height"
         CanResize="False"
-        WindowStartupLocation="CenterOwner">
-  <Grid Margin="20" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
-    <TextBlock x:Name="LabelBlock" FontSize="14" />
-    <TextBox x:Name="InputBox"
-             Grid.Row="1"
-             MinHeight="40" />
-    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-      <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click" />
-      <Button x:Name="OkButton" Content="确定" IsDefault="True" Click="Ok_Click" />
-    </StackPanel>
-  </Grid>
+        SystemDecorations="None"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/logo.ico"
+        Background="Transparent">
+  <Window.Styles>
+    <Style Selector="Button.primaryAction">
+      <Setter Property="Background" Value="#0B75D1" />
+      <Setter Property="BorderBrush" Value="#0B75D1" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="Button.secondaryAction">
+      <Setter Property="Background" Value="#29282D" />
+      <Setter Property="BorderBrush" Value="#4A4950" />
+      <Setter Property="Foreground" Value="#EAF0FC" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#D7DEE8" />
+    </Style>
+    <Style Selector="TextBlock.dialogLabel">
+      <Setter Property="Foreground" Value="#2A2F36" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="TextBlock.dialogTitle">
+      <Setter Property="Foreground" Value="#1B1F24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="Button.titleClose">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.titleClose:pointerover">
+      <Setter Property="Background" Value="#EEF2F8" />
+    </Style>
+  </Window.Styles>
+
+  <Border Margin="0"
+          Background="#FFFFFF"
+          BorderBrush="#D7DEE8"
+          BorderThickness="1"
+          CornerRadius="14"
+          BoxShadow="0 0 0 0 Transparent"
+          Padding="18">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+      <Grid ColumnDefinitions="*,Auto" PointerPressed="TitleBar_PointerPressed">
+        <TextBlock x:Name="TitleBlock" Classes="dialogTitle" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="titleClose" Content="×" Click="Cancel_Click" />
+      </Grid>
+      <TextBlock x:Name="LabelBlock" Grid.Row="1" Classes="dialogLabel" />
+      <TextBox x:Name="InputBox"
+               Grid.Row="2"
+               MinHeight="40" />
+      <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+        <Button x:Name="CancelButton" Classes="secondaryAction" Content="取消" Click="Cancel_Click" />
+        <Button x:Name="OkButton" Classes="primaryAction" Content="确定" IsDefault="True" Click="Ok_Click" />
+      </StackPanel>
+    </Grid>
+  </Border>
 </Window>

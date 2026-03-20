@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
 using RemoteRDPTool.Models;
 
 namespace RemoteRDPTool.Views;
@@ -67,5 +68,10 @@ public partial class ConnectionEditWindow : Window
   private void Cancel_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
   {
     Close(null);
+  }
+
+  private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+  {
+    BeginMoveDrag(e);
   }
 }

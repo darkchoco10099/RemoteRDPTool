@@ -93,6 +93,8 @@ public partial class MainWindowViewModel : ViewModelBase
     try
     {
       _config = await _configStore.LoadAsync();
+      if (EnsureConnectionIds())
+        await _configStore.SaveAsync(_config);
     }
     catch (Exception ex)
     {
@@ -113,6 +115,8 @@ public partial class MainWindowViewModel : ViewModelBase
       var settings = await _settingsStore.LoadAsync();
       ApplySettings(settings);
       _config = await _configStore.LoadAsync();
+      if (EnsureConnectionIds())
+        await _configStore.SaveAsync(_config);
       RefreshGroups();
       RefreshConnections();
       StartPingLoop();
@@ -234,6 +238,10 @@ public partial class MainWindowViewModel : ViewModelBase
         return;
       }
 
+      var confirmed = await _windowService.ConfirmAsync("删除分组确认", $"确认删除分组“{group.Name}”？", "删除分组");
+      if (!confirmed)
+        return;
+
       _config.Groups.Remove(group);
       await _configStore.SaveAsync(_config);
       RefreshGroups();
@@ -245,7 +253,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  private bool CanEditOrDeleteGroup() => SelectedGroup is not ("全部" or "未分组");
+  private bool CanEditOrDeleteGroup() => SelectedGroup != "全部";
 
   [RelayCommand]
   private async Task AddConnectionAsync(string? groupName)
@@ -253,7 +261,7 @@ public partial class MainWindowViewModel : ViewModelBase
     try
     {
       var groups = _config.Groups.Select(g => g.Name).ToArray();
-      var initialGroup = !string.IsNullOrWhiteSpace(groupName) && groupName != "未分组"
+      var initialGroup = !string.IsNullOrWhiteSpace(groupName)
           ? groupName
           : groups.FirstOrDefault() ?? "默认";
 
@@ -295,7 +303,7 @@ public partial class MainWindowViewModel : ViewModelBase
   {
     try
     {
-      if (groupName is "未分组" or "全部")
+      if (groupName == "全部")
         return;
 
       var newName = await _windowService.PromptTextAsync("重命名分组", "分组名称", groupName);
@@ -328,7 +336,7 @@ public partial class MainWindowViewModel : ViewModelBase
   {
     try
     {
-      if (groupName is "未分组" or "全部")
+      if (groupName == "全部")
         return;
 
       var group = _config.Groups.FirstOrDefault(g => string.Equals(g.Name, groupName, StringComparison.Ordinal));
@@ -340,6 +348,10 @@ public partial class MainWindowViewModel : ViewModelBase
         await _windowService.ShowMessageAsync("无法删除分组", "分组内仍有连接，请先删除或移动连接。");
         return;
       }
+
+      var confirmed = await _windowService.ConfirmAsync("删除分组确认", $"确认删除分组“{group.Name}”？", "删除分组");
+      if (!confirmed)
+        return;
 
       _config.Groups.Remove(group);
       await _configStore.SaveAsync(_config);
@@ -380,7 +392,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  [RelayCommand]
+  [RelayCommand(AllowConcurrentExecutions = true)]
   private async Task EditEntryAsync(RdpConnectionEntry entry)
   {
     var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
@@ -398,6 +410,10 @@ public partial class MainWindowViewModel : ViewModelBase
       if (SelectedConnection is null)
         return;
 
+      var confirmed = await _windowService.ConfirmAsync("删除连接确认", $"确认删除连接“{SelectedConnection.Name}”({SelectedConnection.Host})？", "删除连接");
+      if (!confirmed)
+        return;
+
       RemoveConnectionById(SelectedConnection.Id);
       await _configStore.SaveAsync(_config);
       RefreshGroups();
@@ -410,7 +426,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  [RelayCommand]
+  [RelayCommand(AllowConcurrentExecutions = true)]
   private async Task DeleteEntryAsync(RdpConnectionEntry entry)
   {
     var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
@@ -461,7 +477,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  [RelayCommand]
+  [RelayCommand(AllowConcurrentExecutions = true)]
   private async Task ConnectEntryAsync(RdpConnectionEntry entry)
   {
     var cv = GroupViews.SelectMany(g => g.Connections).FirstOrDefault(c => c.Id == entry.Id);
@@ -538,7 +554,6 @@ public partial class MainWindowViewModel : ViewModelBase
       Groups.Add(name);
     }
 
-    Groups.Add("未分组");
     if (Groups.Contains(current))
       SelectedGroup = current;
     else
@@ -563,8 +578,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     entries = entries
-        .OrderBy(e => e.Host, StringComparer.OrdinalIgnoreCase)
-        .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+        .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(e => e.Host, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
     FilteredConnections.Clear();
@@ -583,7 +598,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private void RebuildGroupViews(List<RdpConnectionEntry> entries)
   {
     var grouped = entries
-        .GroupBy(e => string.IsNullOrWhiteSpace(e.Group) ? "未分组" : e.Group)
+        .GroupBy(e => e.Group)
         .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
     GroupViews.Clear();
@@ -594,8 +609,26 @@ public partial class MainWindowViewModel : ViewModelBase
       GroupViews.Add(new GroupView(name, items ?? [], isExpanded: (items?.Count ?? 0) > 0));
     }
 
-    grouped.TryGetValue("未分组", out var ungroupedItems);
-    GroupViews.Add(new GroupView("未分组", ungroupedItems ?? [], isExpanded: (ungroupedItems?.Count ?? 0) > 0));
+  }
+
+  private void ResortGroupForConnection(ConnectionView conn)
+  {
+    var group = GroupViews.FirstOrDefault(g => g.Connections.Contains(conn));
+    if (group is null)
+      return;
+
+    var ordered = group.Connections
+        .OrderBy(c => c.IsOnline ? 0 : 1)
+        .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(c => c.Host, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    for (var i = 0; i < ordered.Count; i++)
+    {
+      var currentIndex = group.Connections.IndexOf(ordered[i]);
+      if (currentIndex >= 0 && currentIndex != i)
+        group.Connections.Move(currentIndex, i);
+    }
   }
 
   private void StartPingLoop()
@@ -652,6 +685,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = "#E2B93B";
         conn.ConsecutiveFailureCount++;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        ResortGroupForConnection(conn);
       });
       return;
     }
@@ -669,6 +703,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = ok ? "#2EAD5A" : "#D9534F";
         conn.ConsecutiveFailureCount = ok ? 0 : conn.ConsecutiveFailureCount + 1;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        ResortGroupForConnection(conn);
       });
     }
     catch
@@ -681,6 +716,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = "#E2B93B";
         conn.ConsecutiveFailureCount++;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        ResortGroupForConnection(conn);
       });
     }
   }
@@ -692,6 +728,28 @@ public partial class MainWindowViewModel : ViewModelBase
     if (AutoReducePingFrequency && consecutiveFailureCount >= 3)
       return reduced;
     return normal;
+  }
+
+  private bool EnsureConnectionIds()
+  {
+    var changed = false;
+    var used = new HashSet<Guid>();
+
+    foreach (var group in _config.Groups)
+    {
+      group.Connections ??= [];
+      foreach (var conn in group.Connections)
+      {
+        if (conn.Id == Guid.Empty || !used.Add(conn.Id))
+        {
+          conn.Id = Guid.NewGuid();
+          changed = true;
+          used.Add(conn.Id);
+        }
+      }
+    }
+
+    return changed;
   }
 
   private void ResetPingSchedule()
@@ -809,6 +867,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task<CredentialPromptResult?> PromptCredentialAsync(RdpConnectionEntry entry) => Task.FromResult<CredentialPromptResult?>(null);
 
     public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
+
+    public Task<bool> ConfirmAsync(string title, string message, string confirmText) => Task.FromResult(true);
   }
 
   public sealed partial class ConnectionView : ObservableObject
@@ -900,7 +960,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool HasConnections => Count > 0;
 
-    public bool CanManage => Name is not "未分组";
+    public bool CanManage => true;
 
     [ObservableProperty]
     private bool isExpanded;

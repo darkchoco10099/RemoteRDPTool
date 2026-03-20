@@ -4,47 +4,95 @@
         Width="520"
         SizeToContent="Height"
         CanResize="False"
+        SystemDecorations="None"
         WindowStartupLocation="CenterOwner"
+        Icon="/Assets/logo.ico"
+        Background="Transparent"
         Title="连接配置">
   <Window.Styles>
-    <Style Selector="Button">
+    <Style Selector="Button.primaryAction">
+      <Setter Property="Background" Value="#0B75D1" />
+      <Setter Property="BorderBrush" Value="#0B75D1" />
+      <Setter Property="Foreground" Value="White" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="14,8" />
       <Setter Property="MinHeight" Value="36" />
     </Style>
-    <Style Selector="TextBox">
+    <Style Selector="Button.secondaryAction">
+      <Setter Property="Background" Value="#29282D" />
+      <Setter Property="BorderBrush" Value="#4A4950" />
+      <Setter Property="Foreground" Value="#EAF0FC" />
       <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,8" />
       <Setter Property="MinHeight" Value="36" />
     </Style>
-    <Style Selector="ComboBox">
+    <Style Selector="TextBox,ComboBox">
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#D7DEE8" />
+    </Style>
+    <Style Selector="TextBlock.fieldLabel">
+      <Setter Property="Foreground" Value="#2A2F36" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.dialogTitle">
+      <Setter Property="Foreground" Value="#1B1F24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="Button.titleClose">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.titleClose:pointerover">
+      <Setter Property="Background" Value="#EEF2F8" />
     </Style>
   </Window.Styles>
 
-  <Grid Margin="20"
-        ColumnDefinitions="Auto,*"
-        RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
-        RowSpacing="12"
-        ColumnSpacing="12">
-    <TextBlock Text="名称" VerticalAlignment="Center" />
-    <TextBox x:Name="NameBox" Grid.Column="1" Watermark="连接名称（可选）" />
+  <Border Margin="0"
+          Background="#FFFFFF"
+          BorderBrush="#D7DEE8"
+          BorderThickness="1"
+          CornerRadius="14"
+          BoxShadow="0 0 0 0 Transparent"
+          Padding="18">
+    <Grid ColumnDefinitions="Auto,*"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+          RowSpacing="12"
+          ColumnSpacing="12">
+      <Grid Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" PointerPressed="TitleBar_PointerPressed">
+        <TextBlock Classes="dialogTitle" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="titleClose" Content="×" Click="Cancel_Click" />
+      </Grid>
 
-    <TextBlock Grid.Row="1" Text="IP/主机" VerticalAlignment="Center" />
-    <TextBox x:Name="HostBox" Grid.Row="1" Grid.Column="1" Watermark="例如：10.0.0.8 或 server.domain.com" />
+      <TextBlock Classes="fieldLabel" Grid.Row="1" Text="名称" VerticalAlignment="Center" />
+      <TextBox x:Name="NameBox" Grid.Row="1" Grid.Column="1" Watermark="连接名称（可选）" />
 
-    <TextBlock Grid.Row="2" Text="账号" VerticalAlignment="Center" />
-    <TextBox x:Name="UserBox" Grid.Row="2" Grid.Column="1" Watermark="例如：Administrator 或 domain\\user" />
+      <TextBlock Classes="fieldLabel" Grid.Row="2" Text="IP/主机" VerticalAlignment="Center" />
+      <TextBox x:Name="HostBox" Grid.Row="2" Grid.Column="1" Watermark="例如：10.0.0.8 或 server.domain.com" />
 
-    <TextBlock Grid.Row="3" Text="密码" VerticalAlignment="Center" />
-    <TextBox x:Name="PasswordBox" Grid.Row="3" Grid.Column="1" PasswordChar="●" Watermark="可留空，连接时再输入" />
+      <TextBlock Classes="fieldLabel" Grid.Row="3" Text="账号" VerticalAlignment="Center" />
+      <TextBox x:Name="UserBox" Grid.Row="3" Grid.Column="1" Watermark="例如：Administrator 或 domain\\user" />
 
-    <TextBlock Grid.Row="4" Text="分组" VerticalAlignment="Center" />
-    <ComboBox x:Name="GroupBox" Grid.Row="4" Grid.Column="1" IsEditable="True" />
+      <TextBlock Classes="fieldLabel" Grid.Row="4" Text="密码" VerticalAlignment="Center" />
+      <TextBox x:Name="PasswordBox" Grid.Row="4" Grid.Column="1" PasswordChar="●" Watermark="可留空，连接时再输入" />
 
-    <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-      <Button Content="取消" Click="Cancel_Click" />
-      <Button Content="保存" IsDefault="True" Click="Save_Click" />
-    </StackPanel>
-  </Grid>
+      <TextBlock Classes="fieldLabel" Grid.Row="5" Text="分组" VerticalAlignment="Center" />
+      <ComboBox x:Name="GroupBox" Grid.Row="5" Grid.Column="1" IsEditable="True" />
+
+      <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+        <Button Classes="secondaryAction" Content="取消" Click="Cancel_Click" />
+        <Button Classes="primaryAction" Content="保存" IsDefault="True" Click="Save_Click" />
+      </StackPanel>
+    </Grid>
+  </Border>
 </Window>

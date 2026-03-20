@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 
 namespace RemoteRDPTool.Views;
 
@@ -19,6 +20,7 @@ public partial class TextPromptWindow : Window
   {
     InitializeComponent();
     Title = title;
+    TitleBlock.Text = title;
     LabelBlock.Text = label;
     InputBox.Text = initialText;
 
@@ -50,5 +52,10 @@ public partial class TextPromptWindow : Window
   private void Cancel_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
   {
     Close(null);
+  }
+
+  private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+  {
+    BeginMoveDrag(e);
   }
 }
