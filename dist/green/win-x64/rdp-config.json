@@ -8,49 +8,57 @@
           "name": "2\u7EBF\u524D\u6BB5",
           "host": "10.80.50.252",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
         },
         {
           "id": "5d3da0d7-2132-4540-964a-4398a476df4d",
           "name": "2\u7EBF\u540E\u6BB5",
           "host": "10.80.50.251",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
         },
         {
           "id": "ec15be71-cf37-4706-bd12-b27e0de11ddd",
           "name": "3\u7EBF\u524D\u6BB5",
           "host": "10.80.50.250",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
         },
         {
           "id": "975a88b4-dd9d-424f-b56e-b956cdc97be4",
           "name": "3\u7EBF\u540E\u6BB5",
           "host": "10.80.50.249",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
         },
         {
           "id": "8a24fe8b-3dc6-40e8-91c8-03111eb85b56",
           "name": "\u80CC\u5149\u5355\u54C1\u7EBF",
           "host": "10.80.50.248",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
         },
         {
           "id": "b6e8393e-e5a3-4564-91bc-729edda63800",
           "name": "1\u7EBF\u524D\u6BB5",
           "host": "10.80.50.254",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "d$"
+
         },
         {
           "id": "c04a6430-5f8e-4d59-aa5e-8d589de3f0b3",
           "name": "1\u7EBF\u540E\u6BB5",
           "host": "10.80.50.253",
           "username": "Administrator",
-          "password": "YNCX2026"
+          "password": "YNCX2026",
+		  "shareDisk": "e$"
         }
       ]
     }
@@ -58,6 +66,7 @@
   "settings": {
     "autoReducePingFrequency": true,
     "pingIntervalSeconds": 5,
-    "reducedPingIntervalSeconds": 60
+    "reducedPingIntervalSeconds": 60,
+    "summonHotkey": "Ctrl\u002BR"
   }
 }
