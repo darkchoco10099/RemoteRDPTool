@@ -255,16 +255,20 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Classes="connectionCard" Margin="0,0,12,10" Padding="14,10" HorizontalAlignment="Stretch" BorderBrush="{Binding PingBorderBrush}">
-                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                                                            <Grid ColumnDefinitions="*,Auto">
-                                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
+                                                        <Grid RowDefinitions="28,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                                            <Grid ColumnDefinitions="*,28" MinHeight="28">
+                                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" VerticalAlignment="Center" />
                                                                 <TextBlock Grid.Column="1"
                                                                            Classes="detectingSpinner"
                                                                            Text="◔"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"
                                                                            IsVisible="{Binding IsChecking}" />
                                                                 <Button Grid.Column="1"
                                                                         Classes="cardAction"
                                                                         Content="🔗"
+                                                                        Width="28"
+                                                                        Height="28"
                                                                         IsVisible="{Binding ShowQuickCheck}"
                                                                         Command="{Binding DataContext.CheckEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
