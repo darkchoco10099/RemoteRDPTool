@@ -614,7 +614,8 @@ public partial class MainWindowViewModel : ViewModelBase
     if (cv is null)
       return;
 
-    await ProbeConnectionAsync(cv);
+    var onlineConnections = await ProbePingBatchAsync([cv]);
+    await ProbeProcessBatchAsync(onlineConnections, CancellationToken.None, force: true);
   }
 
   partial void OnAutoReducePingFrequencyChanged(bool value)
@@ -880,20 +881,16 @@ public partial class MainWindowViewModel : ViewModelBase
   {
     while (!token.IsCancellationRequested)
     {
-      var snapshot = GroupViews
+      var now = DateTime.UtcNow;
+      var dueConnections = GroupViews
           .SelectMany(g => g.Connections)
+          .Where(conn => now >= conn.NextPingAtUtc && !conn.IsChecking)
           .ToList();
 
-      var now = DateTime.UtcNow;
-      foreach (var conn in snapshot)
+      if (dueConnections.Count > 0)
       {
-        if (token.IsCancellationRequested)
-          break;
-
-        if (now < conn.NextPingAtUtc || conn.IsChecking)
-          continue;
-
-        await ProbeConnectionAsync(conn, token);
+        var onlineConnections = await ProbePingBatchAsync(dueConnections, token);
+        await ProbeProcessBatchAsync(onlineConnections, token);
       }
 
       try
@@ -907,65 +904,79 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  private async Task ProbeConnectionAsync(ConnectionView conn, CancellationToken cancellationToken = default)
+  private async Task<List<ConnectionView>> ProbePingBatchAsync(IReadOnlyList<ConnectionView> connections, CancellationToken cancellationToken = default)
   {
-    await Dispatcher.UIThread.InvokeAsync(() => conn.IsChecking = true);
-    var host = conn.Host;
-    if (string.IsNullOrWhiteSpace(host))
-    {
-      await Dispatcher.UIThread.InvokeAsync(() =>
-      {
-        conn.IsChecking = false;
-        conn.IsOnline = false;
-        conn.PingStatus = "未配置";
-        conn.PingBorderBrush = "#E2B93B";
-        conn.ConsecutiveFailureCount++;
-        conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
-        conn.ProcessStatus = "主机未配置";
-        conn.ProcessStatusBrush = "#E2B93B";
-        ResortGroupForConnection(conn);
-      });
-      return;
-    }
+    if (connections.Count == 0)
+      return [];
 
-    try
+    await Dispatcher.UIThread.InvokeAsync(() =>
     {
-      using var ping = new Ping();
-      var reply = await ping.SendPingAsync(host, 1000);
-      var ok = reply.Status == IPStatus.Success;
-      await Dispatcher.UIThread.InvokeAsync(() =>
+      foreach (var conn in connections)
+        conn.IsChecking = true;
+    });
+
+    var pingTasks = connections
+        .Select(conn => PingHostAsync(conn.Host))
+        .ToList();
+    var pingResults = await Task.WhenAll(pingTasks);
+
+    var onlineConnections = new List<ConnectionView>(connections.Count);
+
+    await Dispatcher.UIThread.InvokeAsync(() =>
+    {
+      for (var i = 0; i < connections.Count; i++)
       {
+        if (cancellationToken.IsCancellationRequested)
+          break;
+
+        var conn = connections[i];
+        var ping = pingResults[i];
         conn.IsChecking = false;
-        conn.IsOnline = ok;
-        conn.PingStatus = ok ? "在线" : "不可达";
-        conn.PingBorderBrush = ok ? "#2EAD5A" : "#D9534F";
-        conn.ConsecutiveFailureCount = ok ? 0 : conn.ConsecutiveFailureCount + 1;
+        if (!ping.HasHost)
+        {
+          conn.IsOnline = false;
+          conn.PingStatus = "未配置";
+          conn.PingBorderBrush = "#E2B93B";
+          conn.ConsecutiveFailureCount++;
+          conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+          conn.ProcessStatus = "主机未配置";
+          conn.ProcessStatusBrush = "#E2B93B";
+          ResortGroupForConnection(conn);
+          continue;
+        }
+
+        if (ping.HasError)
+        {
+          conn.IsOnline = false;
+          conn.PingStatus = "错误";
+          conn.PingBorderBrush = "#E2B93B";
+          conn.ConsecutiveFailureCount++;
+          conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+          conn.ProcessStatus = "检测失败";
+          conn.ProcessStatusBrush = "#E2B93B";
+          ResortGroupForConnection(conn);
+          continue;
+        }
+
+        conn.IsOnline = ping.IsOnline;
+        conn.PingStatus = ping.IsOnline ? "在线" : "不可达";
+        conn.PingBorderBrush = ping.IsOnline ? "#2EAD5A" : "#D9534F";
+        conn.ConsecutiveFailureCount = ping.IsOnline ? 0 : conn.ConsecutiveFailureCount + 1;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
-        if (!ok)
+        if (!ping.IsOnline)
         {
           conn.ProcessStatus = "主机离线";
           conn.ProcessStatusBrush = "#D9534F";
         }
+        else
+        {
+          onlineConnections.Add(conn);
+        }
         ResortGroupForConnection(conn);
-      });
-      if (ok)
-        await ProbeConnectionProcessesAsync(conn, cancellationToken);
-    }
-    catch
-    {
-      await Dispatcher.UIThread.InvokeAsync(() =>
-      {
-        conn.IsChecking = false;
-        conn.IsOnline = false;
-        conn.PingStatus = "错误";
-        conn.PingBorderBrush = "#E2B93B";
-        conn.ConsecutiveFailureCount++;
-        conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
-        conn.ProcessStatus = "检测失败";
-        conn.ProcessStatusBrush = "#E2B93B";
-        ResortGroupForConnection(conn);
-      });
-    }
+      }
+    });
+
+    return onlineConnections;
   }
 
   private TimeSpan GetPingInterval(int consecutiveFailureCount)
@@ -977,8 +988,48 @@ public partial class MainWindowViewModel : ViewModelBase
     return normal;
   }
 
-  private async Task ProbeConnectionProcessesAsync(ConnectionView conn, CancellationToken cancellationToken)
+  private static async Task<(bool HasHost, bool IsOnline, bool HasError)> PingHostAsync(string host)
   {
+    if (string.IsNullOrWhiteSpace(host))
+      return (false, false, false);
+
+    try
+    {
+      using var ping = new Ping();
+      var reply = await ping.SendPingAsync(host, 1000);
+      return (true, reply.Status == IPStatus.Success, false);
+    }
+    catch
+    {
+      return (true, false, true);
+    }
+  }
+
+  private async Task ProbeProcessBatchAsync(IReadOnlyList<ConnectionView> connections, CancellationToken cancellationToken, bool force = false)
+  {
+    if (connections.Count == 0)
+      return;
+
+    var processNames = ParseProcessWatchNames(ProcessWatchNamesText);
+    var tasks = connections
+        .Select(conn => ProbeConnectionProcessesAsync(conn, processNames, cancellationToken, force))
+        .ToList();
+    await Task.WhenAll(tasks);
+  }
+
+  private async Task ProbeConnectionProcessesAsync(ConnectionView conn, IReadOnlyList<string> processNames, CancellationToken cancellationToken, bool force = false)
+  {
+    if (!conn.IsOnline)
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "等待主机在线";
+        conn.ProcessStatusBrush = "#8F9BB0";
+      });
+      return;
+    }
+
     if (!ProcessWatchEnabled || !conn.EnableProcessWatch)
     {
       await Dispatcher.UIThread.InvokeAsync(() =>
@@ -990,7 +1041,6 @@ public partial class MainWindowViewModel : ViewModelBase
       return;
     }
 
-    var processNames = ParseProcessWatchNames(ProcessWatchNamesText);
     if (processNames.Count == 0)
     {
       await Dispatcher.UIThread.InvokeAsync(() =>
@@ -1003,7 +1053,9 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     var now = DateTime.UtcNow;
-    if (now < conn.NextProcessCheckAtUtc || conn.IsProcessChecking)
+    if (conn.IsProcessChecking)
+      return;
+    if (!force && now < conn.NextProcessCheckAtUtc)
       return;
 
     if (string.IsNullOrWhiteSpace(conn.Username) || string.IsNullOrWhiteSpace(conn.Entry.Password))

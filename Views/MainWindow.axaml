@@ -454,7 +454,7 @@
                 <Button Grid.Column="1" Classes="footerButton" Content="Open Config" Command="{Binding OpenConfigCommand}" />
                 <Button Grid.Column="2" Classes="footerButton" Content="Refresh" Command="{Binding ReloadConfigCommand}" />
                 <TextBlock Grid.Column="3"
-                           Text="© 2026 zhongxiangying"
+                           Text="© 2026 Young"
                            Foreground="#8F9BB0"
                            VerticalAlignment="Center" />
             </Grid>
