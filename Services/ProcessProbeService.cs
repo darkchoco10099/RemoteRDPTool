@@ -12,18 +12,18 @@ public interface IProcessProbeService
   Task<ProcessProbeResult> ProbeAsync(string host, string username, string password, IReadOnlyList<string> expectedProcessNames, CancellationToken cancellationToken = default);
 }
 
-public sealed record ProcessProbeResult(bool IsSuccess, IReadOnlyList<string> MissingProcesses, string ErrorMessage);
+public sealed record ProcessProbeResult(bool IsSuccess, IReadOnlyList<string> MissingProcesses, string ErrorMessage, string RawOutput, string RawError, int ExitCode);
 
 public sealed class WindowsProcessProbeService : IProcessProbeService
 {
   public async Task<ProcessProbeResult> ProbeAsync(string host, string username, string password, IReadOnlyList<string> expectedProcessNames, CancellationToken cancellationToken = default)
   {
     if (string.IsNullOrWhiteSpace(host))
-      return new ProcessProbeResult(false, expectedProcessNames, "主机为空");
+      return new ProcessProbeResult(false, expectedProcessNames, "主机为空", string.Empty, string.Empty, -1);
 
     var expected = NormalizeProcessNames(expectedProcessNames);
     if (expected.Count == 0)
-      return new ProcessProbeResult(true, [], string.Empty);
+      return new ProcessProbeResult(true, [], string.Empty, string.Empty, string.Empty, 0);
 
     var result = await RunTaskListAsync(host.Trim(), username.Trim(), password, cancellationToken);
     if (result.ExitCode != 0)
@@ -31,14 +31,14 @@ public sealed class WindowsProcessProbeService : IProcessProbeService
       var error = string.IsNullOrWhiteSpace(result.Error)
           ? result.Output.Trim()
           : result.Error.Trim();
-      return new ProcessProbeResult(false, expectedProcessNames, string.IsNullOrWhiteSpace(error) ? "进程检测失败" : error);
+      return new ProcessProbeResult(false, expectedProcessNames, string.IsNullOrWhiteSpace(error) ? "进程检测失败" : error, result.Output, result.Error, result.ExitCode);
     }
 
     var running = ParseRunningProcessNames(result.Output);
     var missing = expected
         .Where(name => !running.Contains(name))
         .ToList();
-    return new ProcessProbeResult(true, missing, string.Empty);
+    return new ProcessProbeResult(true, missing, string.Empty, result.Output, result.Error, result.ExitCode);
   }
 
   private static HashSet<string> ParseRunningProcessNames(string output)

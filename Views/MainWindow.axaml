@@ -255,7 +255,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Classes="connectionCard" Margin="0,0,12,10" Padding="14,10" HorizontalAlignment="Stretch" BorderBrush="{Binding PingBorderBrush}">
-                                                        <Grid RowDefinitions="28,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                                        <Grid RowDefinitions="28,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                                                             <Grid ColumnDefinitions="*,28" MinHeight="28">
                                                                 <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" VerticalAlignment="Center" />
                                                                 <TextBlock Grid.Column="1"
@@ -286,7 +286,29 @@
                                                                 <TextBlock Text="进程" FontSize="12" Foreground="#5A6A85" />
                                                                 <TextBlock Grid.Column="1" Text="{Binding ProcessStatus}" FontSize="12" Foreground="{Binding ProcessStatusBrush}" />
                                                             </Grid>
-                                                            <Grid Grid.Row="4" ColumnDefinitions="*,1,*,1,*,1,*">
+                                                            <Border Grid.Row="4"
+                                                                    IsVisible="{Binding DataContext.ShouldShowProcessDebugLog, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    Background="#F7F9FC"
+                                                                    BorderBrush="#E3E8EF"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="8"
+                                                                    Padding="8,6">
+                                                                <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
+                                                                    <TextBlock Text="进程检测返回数据" FontSize="11" Foreground="#5A6A85" />
+                                                                    <TextBox Grid.Row="1"
+                                                                             Text="{Binding ProcessDebugOutput}"
+                                                                             IsReadOnly="True"
+                                                                             TextWrapping="Wrap"
+                                                                             MinHeight="72"
+                                                                             MaxHeight="180"
+                                                                             Background="Transparent"
+                                                                             BorderThickness="0"
+                                                                             Padding="0"
+                                                                             FontSize="11"
+                                                                             Foreground="#2A2F36" />
+                                                                </Grid>
+                                                            </Border>
+                                                            <Grid Grid.Row="5" ColumnDefinitions="*,1,*,1,*,1,*">
                                                                 <Button Classes="cardAction"
                                                                         ToolTip.Tip="远程连接"
                                                                         Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -383,15 +405,15 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <Border Grid.Row="1"
-                    Margin="14,12,14,12"
-                    Padding="16"
-                    CornerRadius="12"
-                    Background="#FFFFFF"
-                    BorderBrush="#D7DEE8"
-                    BorderThickness="1"
-                    IsVisible="{Binding IsSettingsPage}">
-                <StackPanel Spacing="12">
+            <ScrollViewer Grid.Row="1"
+                          Margin="14,12,14,12"
+                          IsVisible="{Binding IsSettingsPage}">
+                <Border Padding="16"
+                        CornerRadius="12"
+                        Background="#FFFFFF"
+                        BorderBrush="#D7DEE8"
+                        BorderThickness="1">
+                    <StackPanel Spacing="12">
                     <TextBlock Text="Ping 设置" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
                     <TextBlock Text="连续多次不通后自动降低检测频率" FontSize="13" Foreground="#5A6A85" />
                     <CheckBox Content="启用降频策略" IsChecked="{Binding AutoReducePingFrequency}" />
@@ -429,6 +451,7 @@
                     <Separator Margin="0,6,0,4" />
                     <TextBlock Text="进程检测设置" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
                     <CheckBox Content="全局启用进程检测" IsChecked="{Binding ProcessWatchEnabled}" />
+                    <CheckBox Content="显示进程检测日志" IsChecked="{Binding ShowProcessDebugLog}" />
                     <Grid ColumnDefinitions="Auto,90,*" VerticalAlignment="Center">
                         <TextBlock Text="检测间隔(秒)" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Margin="10,0,0,0" Text="{Binding ProcessWatchIntervalSeconds}" HorizontalContentAlignment="Center" />
@@ -444,8 +467,9 @@
                                  Watermark="例如：nginx.exe, java.exe"
                                  Text="{Binding ProcessWatchNamesText, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
-                </StackPanel>
-            </Border>
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
         </Grid>
 
         <Border Grid.Row="1" Grid.Column="1" Background="#29282D" BorderBrush="#45444A" BorderThickness="0,1,0,0" Padding="10,4">

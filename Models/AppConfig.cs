@@ -33,6 +33,8 @@ public sealed class AppSettings
 
   public List<string> ProcessWatchNames { get; set; } = [];
 
+  public bool ShowProcessDebugLog { get; set; }
+
   public string CardIconStyle { get; set; } = "color";
 }
 

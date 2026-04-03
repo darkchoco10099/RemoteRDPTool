@@ -99,6 +99,9 @@ public partial class MainWindowViewModel : ViewModelBase
   private bool processWatchEnabled;
 
   [ObservableProperty]
+  private bool showProcessDebugLog;
+
+  [ObservableProperty]
   private int processWatchIntervalSeconds = 20;
 
   [ObservableProperty]
@@ -113,6 +116,8 @@ public partial class MainWindowViewModel : ViewModelBase
   public bool IsLinearCardIconStyle => CardIconStyleIndex == 1;
 
   public bool IsColorCardIconStyle => CardIconStyleIndex != 1;
+
+  public bool ShouldShowProcessDebugLog => ProcessWatchEnabled && ShowProcessDebugLog;
 
   public async Task InitializeAsync()
   {
@@ -665,10 +670,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
   partial void OnProcessWatchEnabledChanged(bool value)
   {
+    OnPropertyChanged(nameof(ShouldShowProcessDebugLog));
     if (_isApplyingSettings)
       return;
     ResetProcessWatchSchedule();
     UpdateProcessWatchStates();
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnShowProcessDebugLogChanged(bool value)
+  {
+    OnPropertyChanged(nameof(ShouldShowProcessDebugLog));
+    if (_isApplyingSettings)
+      return;
     _ = PersistSettingsAsync();
   }
 
@@ -941,6 +955,7 @@ public partial class MainWindowViewModel : ViewModelBase
           conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
           conn.ProcessStatus = "主机未配置";
           conn.ProcessStatusBrush = "#E2B93B";
+          conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：主机未配置";
           ResortGroupForConnection(conn);
           continue;
         }
@@ -954,6 +969,7 @@ public partial class MainWindowViewModel : ViewModelBase
           conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
           conn.ProcessStatus = "检测失败";
           conn.ProcessStatusBrush = "#E2B93B";
+          conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：Ping 发生错误";
           ResortGroupForConnection(conn);
           continue;
         }
@@ -967,6 +983,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
           conn.ProcessStatus = "主机离线";
           conn.ProcessStatusBrush = "#D9534F";
+          conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：Ping 不可达";
         }
         else
         {
@@ -1026,6 +1043,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.IsProcessChecking = false;
         conn.ProcessStatus = "等待主机在线";
         conn.ProcessStatusBrush = "#8F9BB0";
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：主机不在线";
       });
       return;
     }
@@ -1037,6 +1055,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.IsProcessChecking = false;
         conn.ProcessStatus = "未启用";
         conn.ProcessStatusBrush = "#8F9BB0";
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：未启用";
       });
       return;
     }
@@ -1048,6 +1067,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.IsProcessChecking = false;
         conn.ProcessStatus = "未配置进程";
         conn.ProcessStatusBrush = "#E2B93B";
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：未配置进程名";
       });
       return;
     }
@@ -1066,6 +1086,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.ProcessStatus = "缺少凭据";
         conn.ProcessStatusBrush = "#E2B93B";
         conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 未检测进程：缺少凭据";
       });
       return;
     }
@@ -1079,6 +1100,7 @@ public partial class MainWindowViewModel : ViewModelBase
       {
         conn.IsProcessChecking = false;
         conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        conn.ProcessDebugOutput = BuildProcessDebugOutput(conn, processNames, probe);
         if (!probe.IsSuccess)
         {
           conn.ProcessStatus = "检测失败";
@@ -1113,6 +1135,7 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.ProcessStatus = "检测超时";
         conn.ProcessStatusBrush = "#E2B93B";
         conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 检测超时：{ProcessWatchTimeoutSeconds}s";
       });
     }
     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -1121,6 +1144,7 @@ public partial class MainWindowViewModel : ViewModelBase
       {
         conn.IsProcessChecking = false;
         conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 检测取消";
       });
     }
     catch
@@ -1131,8 +1155,27 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.ProcessStatus = "检测失败";
         conn.ProcessStatusBrush = "#E2B93B";
         conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        conn.ProcessDebugOutput = $"[{DateTime.Now:HH:mm:ss}] 检测异常";
       });
     }
+  }
+
+  private static string BuildProcessDebugOutput(ConnectionView conn, IReadOnlyList<string> processNames, ProcessProbeResult probe)
+  {
+    var expected = processNames.Count == 0 ? "(空)" : string.Join(", ", processNames);
+    var missing = probe.MissingProcesses.Count == 0 ? "(无)" : string.Join(", ", probe.MissingProcesses);
+    var output = string.IsNullOrWhiteSpace(probe.RawOutput) ? "(空)" : probe.RawOutput.Trim();
+    var error = string.IsNullOrWhiteSpace(probe.RawError) ? "(空)" : probe.RawError.Trim();
+    var errorMessage = string.IsNullOrWhiteSpace(probe.ErrorMessage) ? "(空)" : probe.ErrorMessage;
+    return
+        $"[{DateTime.Now:HH:mm:ss}] {conn.Name} ({conn.Host})\n" +
+        $"ExitCode: {probe.ExitCode}\n" +
+        $"IsSuccess: {probe.IsSuccess}\n" +
+        $"Expected: {expected}\n" +
+        $"Missing: {missing}\n" +
+        $"ErrorMessage: {errorMessage}\n" +
+        $"STDOUT:\n{output}\n" +
+        $"STDERR:\n{error}";
   }
 
   private TimeSpan GetProcessWatchInterval()
@@ -1184,16 +1227,19 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.ProcessStatus = "未启用";
         conn.ProcessStatusBrush = "#8F9BB0";
         conn.IsProcessChecking = false;
+        conn.ProcessDebugOutput = "未检测";
       }
       else if (processNames.Count == 0)
       {
         conn.ProcessStatus = "未配置进程";
         conn.ProcessStatusBrush = "#E2B93B";
+        conn.ProcessDebugOutput = "未检测";
       }
       else if (!conn.IsOnline)
       {
         conn.ProcessStatus = "等待主机在线";
         conn.ProcessStatusBrush = "#8F9BB0";
+        conn.ProcessDebugOutput = "未检测";
       }
     }
   }
@@ -1219,6 +1265,7 @@ public partial class MainWindowViewModel : ViewModelBase
     ReducedPingIntervalSeconds = settings.ReducedPingIntervalSeconds;
     SummonHotkey = string.IsNullOrWhiteSpace(settings.SummonHotkey) ? "Ctrl+R" : settings.SummonHotkey.Trim();
     ProcessWatchEnabled = settings.ProcessWatchEnabled;
+    ShowProcessDebugLog = settings.ShowProcessDebugLog;
     ProcessWatchIntervalSeconds = Math.Max(5, settings.ProcessWatchIntervalSeconds);
     ProcessWatchTimeoutSeconds = Math.Clamp(settings.ProcessWatchTimeoutSeconds, 3, 30);
     ProcessWatchNamesText = string.Join(", ", settings.ProcessWatchNames ?? []);
@@ -1240,6 +1287,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ReducedPingIntervalSeconds = ReducedPingIntervalSeconds,
         SummonHotkey = string.IsNullOrWhiteSpace(SummonHotkey) ? "Ctrl+R" : SummonHotkey.Trim(),
         ProcessWatchEnabled = ProcessWatchEnabled,
+        ShowProcessDebugLog = ShowProcessDebugLog,
         ProcessWatchIntervalSeconds = Math.Max(5, ProcessWatchIntervalSeconds),
         ProcessWatchTimeoutSeconds = Math.Clamp(ProcessWatchTimeoutSeconds, 3, 30),
         ProcessWatchNames = ParseProcessWatchNames(ProcessWatchNamesText),
@@ -1335,7 +1383,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private sealed class DesignProcessProbeService : IProcessProbeService
   {
     public Task<ProcessProbeResult> ProbeAsync(string host, string username, string password, IReadOnlyList<string> expectedProcessNames, CancellationToken cancellationToken = default)
-        => Task.FromResult(new ProcessProbeResult(true, [], string.Empty));
+        => Task.FromResult(new ProcessProbeResult(true, [], string.Empty, "\"explorer.exe\",\"1234\",\"Console\",\"1\",\"12,000 K\"", string.Empty, 0));
   }
 
   private sealed class DesignWindowService : IWindowService
@@ -1415,6 +1463,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string processStatusBrush = "#8F9BB0";
+
+    [ObservableProperty]
+    private string processDebugOutput = "未检测";
 
     [ObservableProperty]
     private bool canManualCheck;
