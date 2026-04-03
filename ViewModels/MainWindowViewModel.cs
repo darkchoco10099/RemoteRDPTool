@@ -1170,7 +1170,7 @@ public partial class MainWindowViewModel : ViewModelBase
     ProcessWatchIntervalSeconds = Math.Max(5, settings.ProcessWatchIntervalSeconds);
     ProcessWatchTimeoutSeconds = Math.Clamp(settings.ProcessWatchTimeoutSeconds, 3, 30);
     ProcessWatchNamesText = string.Join(", ", settings.ProcessWatchNames ?? []);
-    CardIconStyleIndex = string.Equals(settings.CardIconStyle, "linear", StringComparison.OrdinalIgnoreCase) || settings.UseLinearCardIcons ? 1 : 0;
+    CardIconStyleIndex = string.Equals(settings.CardIconStyle, "linear", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
     _isApplyingSettings = false;
     ResetPingSchedule();
     ResetProcessWatchSchedule();
@@ -1191,7 +1191,6 @@ public partial class MainWindowViewModel : ViewModelBase
         ProcessWatchIntervalSeconds = Math.Max(5, ProcessWatchIntervalSeconds),
         ProcessWatchTimeoutSeconds = Math.Clamp(ProcessWatchTimeoutSeconds, 3, 30),
         ProcessWatchNames = ParseProcessWatchNames(ProcessWatchNamesText),
-        UseLinearCardIcons = CardIconStyleIndex == 1,
         CardIconStyle = CardIconStyleIndex == 1 ? "linear" : "color"
       };
       await _settingsStore.SaveAsync(settings);

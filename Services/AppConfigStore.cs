@@ -120,7 +120,7 @@ public sealed class FileAppConfigStore : IAppConfigStore
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
     if (string.IsNullOrWhiteSpace(data.Settings.CardIconStyle))
-      data.Settings.CardIconStyle = data.Settings.UseLinearCardIcons ? "linear" : "color";
+      data.Settings.CardIconStyle = "color";
     else if (!string.Equals(data.Settings.CardIconStyle, "linear", StringComparison.OrdinalIgnoreCase))
       data.Settings.CardIconStyle = "color";
     if (string.IsNullOrWhiteSpace(data.Settings.SummonHotkey))
