@@ -119,6 +119,10 @@ public sealed class FileAppConfigStore : IAppConfigStore
         .Select(x => x.Trim())
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+    if (string.IsNullOrWhiteSpace(data.Settings.CardIconStyle))
+      data.Settings.CardIconStyle = data.Settings.UseLinearCardIcons ? "linear" : "color";
+    else if (!string.Equals(data.Settings.CardIconStyle, "linear", StringComparison.OrdinalIgnoreCase))
+      data.Settings.CardIconStyle = "color";
     if (string.IsNullOrWhiteSpace(data.Settings.SummonHotkey))
       data.Settings.SummonHotkey = "Ctrl+R";
     else

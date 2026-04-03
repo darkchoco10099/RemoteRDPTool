@@ -107,6 +107,13 @@ public partial class MainWindowViewModel : ViewModelBase
   [ObservableProperty]
   private string processWatchNamesText = string.Empty;
 
+  [ObservableProperty]
+  private int cardIconStyleIndex;
+
+  public bool IsLinearCardIconStyle => CardIconStyleIndex == 1;
+
+  public bool IsColorCardIconStyle => CardIconStyleIndex != 1;
+
   public async Task InitializeAsync()
   {
     try
@@ -705,6 +712,21 @@ public partial class MainWindowViewModel : ViewModelBase
     _ = PersistSettingsAsync();
   }
 
+  partial void OnCardIconStyleIndexChanged(int value)
+  {
+    if (value is < 0 or > 1)
+    {
+      CardIconStyleIndex = value < 0 ? 0 : 1;
+      return;
+    }
+
+    OnPropertyChanged(nameof(IsLinearCardIconStyle));
+    OnPropertyChanged(nameof(IsColorCardIconStyle));
+    if (_isApplyingSettings)
+      return;
+    _ = PersistSettingsAsync();
+  }
+
   private bool HasSelectedConnection() => SelectedConnection is not null;
 
   [RelayCommand(CanExecute = nameof(CanCancelGlobalLoading))]
@@ -1148,6 +1170,7 @@ public partial class MainWindowViewModel : ViewModelBase
     ProcessWatchIntervalSeconds = Math.Max(5, settings.ProcessWatchIntervalSeconds);
     ProcessWatchTimeoutSeconds = Math.Clamp(settings.ProcessWatchTimeoutSeconds, 3, 30);
     ProcessWatchNamesText = string.Join(", ", settings.ProcessWatchNames ?? []);
+    CardIconStyleIndex = string.Equals(settings.CardIconStyle, "linear", StringComparison.OrdinalIgnoreCase) || settings.UseLinearCardIcons ? 1 : 0;
     _isApplyingSettings = false;
     ResetPingSchedule();
     ResetProcessWatchSchedule();
@@ -1167,7 +1190,9 @@ public partial class MainWindowViewModel : ViewModelBase
         ProcessWatchEnabled = ProcessWatchEnabled,
         ProcessWatchIntervalSeconds = Math.Max(5, ProcessWatchIntervalSeconds),
         ProcessWatchTimeoutSeconds = Math.Clamp(ProcessWatchTimeoutSeconds, 3, 30),
-        ProcessWatchNames = ParseProcessWatchNames(ProcessWatchNamesText)
+        ProcessWatchNames = ParseProcessWatchNames(ProcessWatchNamesText),
+        UseLinearCardIcons = CardIconStyleIndex == 1,
+        CardIconStyle = CardIconStyleIndex == 1 ? "linear" : "color"
       };
       await _settingsStore.SaveAsync(settings);
     }

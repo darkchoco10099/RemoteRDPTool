@@ -32,6 +32,10 @@ public sealed class AppSettings
   public int ProcessWatchTimeoutSeconds { get; set; } = 10;
 
   public List<string> ProcessWatchNames { get; set; } = [];
+
+  public bool UseLinearCardIcons { get; set; }
+
+  public string CardIconStyle { get; set; } = "color";
 }
 
 public sealed class RdpGroup

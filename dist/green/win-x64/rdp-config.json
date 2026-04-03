@@ -86,6 +86,8 @@
     "processWatchEnabled": true,
     "processWatchIntervalSeconds": 20,
     "processWatchTimeoutSeconds": 15,
+    "useLinearCardIcons": false,
+    "cardIconStyle": "color",
     "processWatchNames": [
       "TOKEN_EAS"
     ]

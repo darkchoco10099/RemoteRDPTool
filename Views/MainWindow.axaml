@@ -284,31 +284,87 @@
                                                             </Grid>
                                                             <Grid Grid.Row="4" ColumnDefinitions="*,1,*,1,*,1,*">
                                                                 <Button Classes="cardAction"
-                                                                        Content="🖥"
                                                                         ToolTip.Tip="远程连接"
                                                                         Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding Entry}" />
+                                                                        CommandParameter="{Binding Entry}">
+                                                                    <Grid Width="20" Height="20" ClipToBounds="False">
+                                                                        <TextBlock Text="🖥"
+                                                                                   FontFamily="Segoe UI Emoji"
+                                                                                   FontSize="16"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   IsVisible="{Binding DataContext.IsColorCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                        <Path Data="M2,3 H14 V10 H2 Z M6,12 H10 M8,10 V12 M15,5 L12,5 M12,5 L12,3 M12,5 L10,7"
+                                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                              StrokeThickness="1.6"
+                                                                              StrokeLineCap="Round"
+                                                                              StrokeJoin="Round"
+                                                                              IsVisible="{Binding DataContext.IsLinearCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                    </Grid>
+                                                                </Button>
                                                                 <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="2"
                                                                         Classes="cardAction"
-                                                                        Content="📁"
                                                                         ToolTip.Tip="共享磁盘"
                                                                         Command="{Binding DataContext.OpenShareDiskEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding Entry}" />
+                                                                        CommandParameter="{Binding Entry}">
+                                                                    <Grid Width="20" Height="20" ClipToBounds="False">
+                                                                        <TextBlock Text="📁"
+                                                                                   FontFamily="Segoe UI Emoji"
+                                                                                   FontSize="16"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   IsVisible="{Binding DataContext.IsColorCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                        <Path Data="M1.5,6 H6 L7.2,4.5 H14.5 V13 H1.5 Z"
+                                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                              StrokeThickness="1.6"
+                                                                              StrokeLineCap="Round"
+                                                                              StrokeJoin="Round"
+                                                                              IsVisible="{Binding DataContext.IsLinearCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                    </Grid>
+                                                                </Button>
                                                                 <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="4"
                                                                         Classes="cardAction"
-                                                                        Content="✏"
                                                                         ToolTip.Tip="编辑"
                                                                         Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding Entry}" />
+                                                                        CommandParameter="{Binding Entry}">
+                                                                    <Grid Width="20" Height="20" ClipToBounds="False">
+                                                                        <TextBlock Text="✏"
+                                                                                   FontFamily="Segoe UI Emoji"
+                                                                                   FontSize="16"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   IsVisible="{Binding DataContext.IsColorCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                        <Path Data="M3,11 L5,13 L12.5,5.5 L10.5,3.5 Z M10.5,3.5 L11.8,2.2 L13.8,4.2 L12.5,5.5"
+                                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                              StrokeThickness="1.6"
+                                                                              StrokeLineCap="Round"
+                                                                              StrokeJoin="Round"
+                                                                              IsVisible="{Binding DataContext.IsLinearCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                    </Grid>
+                                                                </Button>
                                                                 <Border Grid.Column="5" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="6"
                                                                         Classes="cardAction cardDelete"
-                                                                        Content="🗑"
                                                                         ToolTip.Tip="删除"
                                                                         Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                        CommandParameter="{Binding Entry}" />
+                                                                        CommandParameter="{Binding Entry}">
+                                                                    <Grid Width="20" Height="20" ClipToBounds="False">
+                                                                        <TextBlock Text="🗑"
+                                                                                   FontFamily="Segoe UI Emoji"
+                                                                                   FontSize="16"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   IsVisible="{Binding DataContext.IsColorCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                        <Path Data="M4,4 H12 M5,4 V13 H11 V4 M6.5,4 V2.8 H9.5 V4 M7,6.2 V11 M9,6.2 V11"
+                                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                              StrokeThickness="1.6"
+                                                                              StrokeLineCap="Round"
+                                                                              StrokeJoin="Round"
+                                                                              IsVisible="{Binding DataContext.IsLinearCardIconStyle, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                                    </Grid>
+                                                                </Button>
                                                             </Grid>
                                                         </Grid>
                                                     </Border>
@@ -356,6 +412,15 @@
                                  GotFocus="SummonHotkeyInput_GotFocus"
                                  LostFocus="SummonHotkeyInput_LostFocus"
                                  KeyDown="SummonHotkeyInput_KeyDown" />
+                    </Grid>
+                    <Separator Margin="0,6,0,4" />
+                    <TextBlock Text="卡片图标风格" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
+                    <Grid ColumnDefinitions="Auto,220,*" VerticalAlignment="Center">
+                        <TextBlock Text="图标样式" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" Margin="10,0,0,0" SelectedIndex="{Binding CardIconStyleIndex}">
+                            <ComboBoxItem Content="彩色图标" />
+                            <ComboBoxItem Content="线性图标（企业）" />
+                        </ComboBox>
                     </Grid>
                     <Separator Margin="0,6,0,4" />
                     <TextBlock Text="进程检测设置" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
