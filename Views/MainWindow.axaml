@@ -347,10 +347,14 @@
         </Grid>
 
         <Border Grid.Row="1" Grid.Column="1" Background="#29282D" BorderBrush="#45444A" BorderThickness="0,1,0,0" Padding="10,4">
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12">
                 <TextBlock Text="{Binding ConfigFilePath}" Foreground="#8F9BB0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <Button Grid.Column="1" Classes="footerButton" Content="Open Config" Command="{Binding OpenConfigCommand}" />
                 <Button Grid.Column="2" Classes="footerButton" Content="Refresh" Command="{Binding ReloadConfigCommand}" />
+                <TextBlock Grid.Column="3"
+                           Text="© 2026 zhongxiangying"
+                           Foreground="#8F9BB0"
+                           VerticalAlignment="Center" />
             </Grid>
         </Border>
 
