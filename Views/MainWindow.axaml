@@ -64,9 +64,13 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="#44558F" />
-            <Setter Property="Padding" Value="8,2" />
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="16" />
         </Style>
         <Style Selector="Button.cardDelete">
             <Setter Property="Foreground" Value="#B75C52" />
@@ -280,25 +284,29 @@
                                                             </Grid>
                                                             <Grid Grid.Row="4" ColumnDefinitions="*,1,*,1,*,1,*">
                                                                 <Button Classes="cardAction"
-                                                                        Content="RDP"
+                                                                        Content="🖥"
+                                                                        ToolTip.Tip="远程连接"
                                                                         Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                                 <Border Grid.Column="1" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="2"
                                                                         Classes="cardAction"
-                                                                        Content="Shared"
+                                                                        Content="📁"
+                                                                        ToolTip.Tip="共享磁盘"
                                                                         Command="{Binding DataContext.OpenShareDiskEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                                 <Border Grid.Column="3" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="4"
                                                                         Classes="cardAction"
-                                                                        Content="Edit"
+                                                                        Content="✏"
+                                                                        ToolTip.Tip="编辑"
                                                                         Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                                 <Border Grid.Column="5" Width="1" Background="#E1E6EE" Margin="6,0" />
                                                                 <Button Grid.Column="6"
                                                                         Classes="cardAction cardDelete"
-                                                                        Content="Delete"
+                                                                        Content="🗑"
+                                                                        ToolTip.Tip="删除"
                                                                         Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                         CommandParameter="{Binding Entry}" />
                                                             </Grid>
