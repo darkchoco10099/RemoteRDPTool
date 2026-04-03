@@ -54,8 +54,9 @@ public partial class App : Application
       var settingsStore = new FileAppSettingsStore(configPath);
       var rdpLauncher = new WindowsRdpLauncher();
       var shareDiskLauncher = new WindowsShareDiskLauncher();
+      var processProbeService = new WindowsProcessProbeService();
       var windowService = new WindowService();
-      var vm = new MainWindowViewModel(configStore, settingsStore, rdpLauncher, shareDiskLauncher, windowService);
+      var vm = new MainWindowViewModel(configStore, settingsStore, rdpLauncher, shareDiskLauncher, processProbeService, windowService);
 
       desktop.MainWindow = new MainWindow
       {

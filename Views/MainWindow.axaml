@@ -251,7 +251,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Classes="connectionCard" Margin="0,0,12,10" Padding="14,10" HorizontalAlignment="Stretch" BorderBrush="{Binding PingBorderBrush}">
-                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                                                             <Grid ColumnDefinitions="*,Auto">
                                                                 <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="#1B1F24" />
                                                                 <TextBlock Grid.Column="1"
@@ -271,7 +271,14 @@
                                                                 <Run Text="{Binding Username}" />
                                                             </TextBlock>
                                                             <TextBlock Grid.Row="2" FontSize="12" Foreground="#5A6A85" Text="{Binding SharePathDisplay}" />
-                                                            <Grid Grid.Row="3" ColumnDefinitions="*,1,*,1,*,1,*">
+                                                            <Grid Grid.Row="3"
+                                                                  ColumnDefinitions="Auto,*"
+                                                                  ColumnSpacing="6"
+                                                                  IsVisible="{Binding DataContext.ProcessWatchEnabled, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                                <TextBlock Text="进程" FontSize="12" Foreground="#5A6A85" />
+                                                                <TextBlock Grid.Column="1" Text="{Binding ProcessStatus}" FontSize="12" Foreground="{Binding ProcessStatusBrush}" />
+                                                            </Grid>
+                                                            <Grid Grid.Row="4" ColumnDefinitions="*,1,*,1,*,1,*">
                                                                 <Button Classes="cardAction"
                                                                         Content="RDP"
                                                                         Command="{Binding DataContext.ConnectEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -341,6 +348,24 @@
                                  GotFocus="SummonHotkeyInput_GotFocus"
                                  LostFocus="SummonHotkeyInput_LostFocus"
                                  KeyDown="SummonHotkeyInput_KeyDown" />
+                    </Grid>
+                    <Separator Margin="0,6,0,4" />
+                    <TextBlock Text="进程检测设置" FontSize="16" FontWeight="SemiBold" Foreground="#1B1F24" />
+                    <CheckBox Content="全局启用进程检测" IsChecked="{Binding ProcessWatchEnabled}" />
+                    <Grid ColumnDefinitions="Auto,90,*" VerticalAlignment="Center">
+                        <TextBlock Text="检测间隔(秒)" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Margin="10,0,0,0" Text="{Binding ProcessWatchIntervalSeconds}" HorizontalContentAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,90,*" VerticalAlignment="Center">
+                        <TextBlock Text="检测超时(秒)" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Margin="10,0,0,0" Text="{Binding ProcessWatchTimeoutSeconds}" HorizontalContentAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                        <TextBlock Text="进程名列表" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1"
+                                 Margin="10,0,0,0"
+                                 Watermark="例如：nginx.exe, java.exe"
+                                 Text="{Binding ProcessWatchNamesText, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                 </StackPanel>
             </Border>

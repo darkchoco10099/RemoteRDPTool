@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -110,6 +111,14 @@ public sealed class FileAppConfigStore : IAppConfigStore
     data.Settings ??= new AppSettings();
     data.Settings.PingIntervalSeconds = Math.Max(2, data.Settings.PingIntervalSeconds);
     data.Settings.ReducedPingIntervalSeconds = Math.Max(data.Settings.PingIntervalSeconds, data.Settings.ReducedPingIntervalSeconds);
+    data.Settings.ProcessWatchIntervalSeconds = Math.Max(5, data.Settings.ProcessWatchIntervalSeconds);
+    data.Settings.ProcessWatchTimeoutSeconds = Math.Clamp(data.Settings.ProcessWatchTimeoutSeconds, 3, 30);
+    data.Settings.ProcessWatchNames ??= [];
+    data.Settings.ProcessWatchNames = data.Settings.ProcessWatchNames
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Select(x => x.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
     if (string.IsNullOrWhiteSpace(data.Settings.SummonHotkey))
       data.Settings.SummonHotkey = "Ctrl+R";
     else

@@ -21,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
   private readonly IAppSettingsStore _settingsStore;
   private readonly IRdpLauncher _rdpLauncher;
   private readonly IShareDiskLauncher _shareDiskLauncher;
+  private readonly IProcessProbeService _processProbeService;
   private readonly IWindowService _windowService;
 
   private AppConfig _config = new();
@@ -32,19 +33,20 @@ public partial class MainWindowViewModel : ViewModelBase
   private const int GlobalLoadingTimeoutSeconds = 12;
 
   public MainWindowViewModel()
-      : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignShareDiskLauncher(), new DesignWindowService())
+      : this(new DesignAppConfigStore(), new DesignAppSettingsStore(), new DesignRdpLauncher(), new DesignShareDiskLauncher(), new DesignProcessProbeService(), new DesignWindowService())
   {
     _config = CreateDesignConfig();
     RefreshGroups();
     RefreshConnections();
   }
 
-  public MainWindowViewModel(IAppConfigStore configStore, IAppSettingsStore settingsStore, IRdpLauncher rdpLauncher, IShareDiskLauncher shareDiskLauncher, IWindowService windowService)
+  public MainWindowViewModel(IAppConfigStore configStore, IAppSettingsStore settingsStore, IRdpLauncher rdpLauncher, IShareDiskLauncher shareDiskLauncher, IProcessProbeService processProbeService, IWindowService windowService)
   {
     _configStore = configStore;
     _settingsStore = settingsStore;
     _rdpLauncher = rdpLauncher;
     _shareDiskLauncher = shareDiskLauncher;
+    _processProbeService = processProbeService;
     _windowService = windowService;
 
     Groups = new ObservableCollection<string>();
@@ -92,6 +94,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
   [ObservableProperty]
   private string summonHotkey = "Ctrl+R";
+
+  [ObservableProperty]
+  private bool processWatchEnabled;
+
+  [ObservableProperty]
+  private int processWatchIntervalSeconds = 20;
+
+  [ObservableProperty]
+  private int processWatchTimeoutSeconds = 10;
+
+  [ObservableProperty]
+  private string processWatchNamesText = string.Empty;
 
   public async Task InitializeAsync()
   {
@@ -641,6 +655,56 @@ public partial class MainWindowViewModel : ViewModelBase
     _ = PersistSettingsAsync();
   }
 
+  partial void OnProcessWatchEnabledChanged(bool value)
+  {
+    if (_isApplyingSettings)
+      return;
+    ResetProcessWatchSchedule();
+    UpdateProcessWatchStates();
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnProcessWatchIntervalSecondsChanged(int value)
+  {
+    if (value < 5)
+      ProcessWatchIntervalSeconds = 5;
+    if (_isApplyingSettings)
+      return;
+    ResetProcessWatchSchedule();
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnProcessWatchTimeoutSecondsChanged(int value)
+  {
+    var normalized = Math.Clamp(value, 3, 30);
+    if (value != normalized)
+    {
+      ProcessWatchTimeoutSeconds = normalized;
+      return;
+    }
+
+    if (_isApplyingSettings)
+      return;
+    _ = PersistSettingsAsync();
+  }
+
+  partial void OnProcessWatchNamesTextChanged(string value)
+  {
+    if (_isApplyingSettings)
+      return;
+
+    var normalized = string.Join(", ", ParseProcessWatchNames(value));
+    if (!string.Equals(value, normalized, StringComparison.Ordinal))
+    {
+      ProcessWatchNamesText = normalized;
+      return;
+    }
+
+    ResetProcessWatchSchedule();
+    UpdateProcessWatchStates();
+    _ = PersistSettingsAsync();
+  }
+
   private bool HasSelectedConnection() => SelectedConnection is not null;
 
   [RelayCommand(CanExecute = nameof(CanCancelGlobalLoading))]
@@ -758,6 +822,7 @@ public partial class MainWindowViewModel : ViewModelBase
       GroupViews.Add(new GroupView(name, items ?? [], isExpanded: (items?.Count ?? 0) > 0));
     }
 
+    UpdateProcessWatchStates();
   }
 
   private void ResortGroupForConnection(ConnectionView conn)
@@ -806,7 +871,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (now < conn.NextPingAtUtc || conn.IsChecking)
           continue;
 
-        await ProbeConnectionAsync(conn);
+        await ProbeConnectionAsync(conn, token);
       }
 
       try
@@ -820,7 +885,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
   }
 
-  private async Task ProbeConnectionAsync(ConnectionView conn)
+  private async Task ProbeConnectionAsync(ConnectionView conn, CancellationToken cancellationToken = default)
   {
     await Dispatcher.UIThread.InvokeAsync(() => conn.IsChecking = true);
     var host = conn.Host;
@@ -834,6 +899,8 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = "#E2B93B";
         conn.ConsecutiveFailureCount++;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        conn.ProcessStatus = "主机未配置";
+        conn.ProcessStatusBrush = "#E2B93B";
         ResortGroupForConnection(conn);
       });
       return;
@@ -852,8 +919,15 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = ok ? "#2EAD5A" : "#D9534F";
         conn.ConsecutiveFailureCount = ok ? 0 : conn.ConsecutiveFailureCount + 1;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        if (!ok)
+        {
+          conn.ProcessStatus = "主机离线";
+          conn.ProcessStatusBrush = "#D9534F";
+        }
         ResortGroupForConnection(conn);
       });
+      if (ok)
+        await ProbeConnectionProcessesAsync(conn, cancellationToken);
     }
     catch
     {
@@ -865,6 +939,8 @@ public partial class MainWindowViewModel : ViewModelBase
         conn.PingBorderBrush = "#E2B93B";
         conn.ConsecutiveFailureCount++;
         conn.NextPingAtUtc = DateTime.UtcNow + GetPingInterval(conn.ConsecutiveFailureCount);
+        conn.ProcessStatus = "检测失败";
+        conn.ProcessStatusBrush = "#E2B93B";
         ResortGroupForConnection(conn);
       });
     }
@@ -877,6 +953,117 @@ public partial class MainWindowViewModel : ViewModelBase
     if (AutoReducePingFrequency && consecutiveFailureCount >= 3)
       return reduced;
     return normal;
+  }
+
+  private async Task ProbeConnectionProcessesAsync(ConnectionView conn, CancellationToken cancellationToken)
+  {
+    if (!ProcessWatchEnabled || !conn.EnableProcessWatch)
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "未启用";
+        conn.ProcessStatusBrush = "#8F9BB0";
+      });
+      return;
+    }
+
+    var processNames = ParseProcessWatchNames(ProcessWatchNamesText);
+    if (processNames.Count == 0)
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "未配置进程";
+        conn.ProcessStatusBrush = "#E2B93B";
+      });
+      return;
+    }
+
+    var now = DateTime.UtcNow;
+    if (now < conn.NextProcessCheckAtUtc || conn.IsProcessChecking)
+      return;
+
+    if (string.IsNullOrWhiteSpace(conn.Username) || string.IsNullOrWhiteSpace(conn.Entry.Password))
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "缺少凭据";
+        conn.ProcessStatusBrush = "#E2B93B";
+        conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+      });
+      return;
+    }
+
+    await Dispatcher.UIThread.InvokeAsync(() => conn.IsProcessChecking = true);
+    try
+    {
+      var probeTask = _processProbeService.ProbeAsync(conn.Host, conn.Username, conn.Entry.Password!, processNames, cancellationToken);
+      var probe = await probeTask.WaitAsync(TimeSpan.FromSeconds(ProcessWatchTimeoutSeconds), cancellationToken);
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+        if (!probe.IsSuccess)
+        {
+          conn.ProcessStatus = "检测失败";
+          conn.ProcessStatusBrush = "#E2B93B";
+          return;
+        }
+
+        if (probe.MissingProcesses.Count == 0)
+        {
+          conn.ProcessStatus = "进程正常";
+          conn.ProcessStatusBrush = "#2EAD5A";
+          return;
+        }
+
+        if (probe.MissingProcesses.Count == 1)
+        {
+          conn.ProcessStatus = $"缺失: {probe.MissingProcesses[0]}";
+        }
+        else
+        {
+          var preview = string.Join(", ", probe.MissingProcesses.Take(2));
+          conn.ProcessStatus = $"缺失 {probe.MissingProcesses.Count} 项 ({preview})";
+        }
+        conn.ProcessStatusBrush = "#D9534F";
+      });
+    }
+    catch (TimeoutException)
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "检测超时";
+        conn.ProcessStatusBrush = "#E2B93B";
+        conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+      });
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+      });
+    }
+    catch
+    {
+      await Dispatcher.UIThread.InvokeAsync(() =>
+      {
+        conn.IsProcessChecking = false;
+        conn.ProcessStatus = "检测失败";
+        conn.ProcessStatusBrush = "#E2B93B";
+        conn.NextProcessCheckAtUtc = DateTime.UtcNow + GetProcessWatchInterval();
+      });
+    }
+  }
+
+  private TimeSpan GetProcessWatchInterval()
+  {
+    return TimeSpan.FromSeconds(Math.Max(5, ProcessWatchIntervalSeconds));
   }
 
   private bool EnsureConnectionIds()
@@ -907,6 +1094,49 @@ public partial class MainWindowViewModel : ViewModelBase
       conn.NextPingAtUtc = DateTime.MinValue;
   }
 
+  private void ResetProcessWatchSchedule()
+  {
+    foreach (var conn in GroupViews.SelectMany(g => g.Connections))
+      conn.NextProcessCheckAtUtc = DateTime.MinValue;
+  }
+
+  private void UpdateProcessWatchStates()
+  {
+    var processNames = ParseProcessWatchNames(ProcessWatchNamesText);
+    foreach (var conn in GroupViews.SelectMany(g => g.Connections))
+    {
+      if (!ProcessWatchEnabled || !conn.EnableProcessWatch)
+      {
+        conn.ProcessStatus = "未启用";
+        conn.ProcessStatusBrush = "#8F9BB0";
+        conn.IsProcessChecking = false;
+      }
+      else if (processNames.Count == 0)
+      {
+        conn.ProcessStatus = "未配置进程";
+        conn.ProcessStatusBrush = "#E2B93B";
+      }
+      else if (!conn.IsOnline)
+      {
+        conn.ProcessStatus = "等待主机在线";
+        conn.ProcessStatusBrush = "#8F9BB0";
+      }
+    }
+  }
+
+  private static List<string> ParseProcessWatchNames(string? source)
+  {
+    if (string.IsNullOrWhiteSpace(source))
+      return [];
+
+    return source
+        .Split([',', ';', '\r', '\n', '，', '；'], StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+  }
+
   private void ApplySettings(AppSettings settings)
   {
     _isApplyingSettings = true;
@@ -914,8 +1144,14 @@ public partial class MainWindowViewModel : ViewModelBase
     PingIntervalSeconds = settings.PingIntervalSeconds;
     ReducedPingIntervalSeconds = settings.ReducedPingIntervalSeconds;
     SummonHotkey = string.IsNullOrWhiteSpace(settings.SummonHotkey) ? "Ctrl+R" : settings.SummonHotkey.Trim();
+    ProcessWatchEnabled = settings.ProcessWatchEnabled;
+    ProcessWatchIntervalSeconds = Math.Max(5, settings.ProcessWatchIntervalSeconds);
+    ProcessWatchTimeoutSeconds = Math.Clamp(settings.ProcessWatchTimeoutSeconds, 3, 30);
+    ProcessWatchNamesText = string.Join(", ", settings.ProcessWatchNames ?? []);
     _isApplyingSettings = false;
     ResetPingSchedule();
+    ResetProcessWatchSchedule();
+    UpdateProcessWatchStates();
   }
 
   private async Task PersistSettingsAsync()
@@ -927,7 +1163,11 @@ public partial class MainWindowViewModel : ViewModelBase
         AutoReducePingFrequency = AutoReducePingFrequency,
         PingIntervalSeconds = PingIntervalSeconds,
         ReducedPingIntervalSeconds = ReducedPingIntervalSeconds,
-        SummonHotkey = string.IsNullOrWhiteSpace(SummonHotkey) ? "Ctrl+R" : SummonHotkey.Trim()
+        SummonHotkey = string.IsNullOrWhiteSpace(SummonHotkey) ? "Ctrl+R" : SummonHotkey.Trim(),
+        ProcessWatchEnabled = ProcessWatchEnabled,
+        ProcessWatchIntervalSeconds = Math.Max(5, ProcessWatchIntervalSeconds),
+        ProcessWatchTimeoutSeconds = Math.Clamp(ProcessWatchTimeoutSeconds, 3, 30),
+        ProcessWatchNames = ParseProcessWatchNames(ProcessWatchNamesText)
       };
       await _settingsStore.SaveAsync(settings);
     }
@@ -978,7 +1218,8 @@ public partial class MainWindowViewModel : ViewModelBase
               Host = "10.0.0.8",
               Username = "Administrator",
               Password = string.Empty,
-              ShareDisk = "c$"
+              ShareDisk = "c$",
+              EnableProcessWatch = true
             }
           ]
         },
@@ -1015,6 +1256,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public Task OpenAsync(string host, string shareDisk, string? username, string? password, CancellationToken cancellationToken = default) => Task.CompletedTask;
   }
 
+  private sealed class DesignProcessProbeService : IProcessProbeService
+  {
+    public Task<ProcessProbeResult> ProbeAsync(string host, string username, string password, IReadOnlyList<string> expectedProcessNames, CancellationToken cancellationToken = default)
+        => Task.FromResult(new ProcessProbeResult(true, [], string.Empty));
+  }
+
   private sealed class DesignWindowService : IWindowService
   {
     public Task<string?> PromptTextAsync(string title, string label, string initialText) => Task.FromResult<string?>(null);
@@ -1040,7 +1287,9 @@ public partial class MainWindowViewModel : ViewModelBase
       ShareDisk = entry.ShareDisk;
       SharePathDisplay = string.IsNullOrWhiteSpace(entry.ShareDisk) ? string.Empty : $@"\\{entry.Host}\{entry.ShareDisk.Trim().TrimStart('\\', '/')}";
       Group = entry.Group;
+      EnableProcessWatch = entry.EnableProcessWatch;
       PingStatus = "检测中";
+      ProcessStatus = "未启用";
     }
 
     public RdpConnectionEntry Entry { get; }
@@ -1059,6 +1308,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string Group { get; }
 
+    public bool EnableProcessWatch { get; }
+
     [ObservableProperty]
     private string pingStatus;
 
@@ -1076,6 +1327,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private DateTime nextPingAtUtc = DateTime.MinValue;
+
+    [ObservableProperty]
+    private bool isProcessChecking;
+
+    [ObservableProperty]
+    private DateTime nextProcessCheckAtUtc = DateTime.MinValue;
+
+    [ObservableProperty]
+    private string processStatus;
+
+    [ObservableProperty]
+    private string processStatusBrush = "#8F9BB0";
 
     [ObservableProperty]
     private bool canManualCheck;

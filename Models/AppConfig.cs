@@ -24,6 +24,14 @@ public sealed class AppSettings
   public int ReducedPingIntervalSeconds { get; set; } = 8;
 
   public string SummonHotkey { get; set; } = "Ctrl+R";
+
+  public bool ProcessWatchEnabled { get; set; }
+
+  public int ProcessWatchIntervalSeconds { get; set; } = 20;
+
+  public int ProcessWatchTimeoutSeconds { get; set; } = 10;
+
+  public List<string> ProcessWatchNames { get; set; } = [];
 }
 
 public sealed class RdpGroup
@@ -46,6 +54,8 @@ public sealed class RdpConnection
   public string? Password { get; set; }
 
   public string ShareDisk { get; set; } = string.Empty;
+
+  public bool EnableProcessWatch { get; set; }
 }
 
 public sealed record RdpConnectionEntry
@@ -64,6 +74,8 @@ public sealed record RdpConnectionEntry
 
   public string Group { get; init; } = "默认";
 
+  public bool EnableProcessWatch { get; init; }
+
   public static RdpConnectionEntry FromConnection(string groupName, RdpConnection connection)
   {
     return new RdpConnectionEntry
@@ -74,7 +86,8 @@ public sealed record RdpConnectionEntry
       Username = connection.Username,
       Password = connection.Password,
       ShareDisk = connection.ShareDisk,
-      Group = groupName
+      Group = groupName,
+      EnableProcessWatch = connection.EnableProcessWatch
     };
   }
 
@@ -87,7 +100,8 @@ public sealed record RdpConnectionEntry
       Host = Host,
       Username = Username,
       Password = Password,
-      ShareDisk = ShareDisk
+      ShareDisk = ShareDisk,
+      EnableProcessWatch = EnableProcessWatch
     };
   }
 }

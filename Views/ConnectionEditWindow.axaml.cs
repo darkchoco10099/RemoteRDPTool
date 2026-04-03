@@ -22,7 +22,8 @@ public partial class ConnectionEditWindow : Window
       Username = string.Empty,
       Password = string.Empty,
       ShareDisk = string.Empty,
-      Group = "默认"
+      Group = "默认",
+      EnableProcessWatch = false
     };
 
     var groupItems = new List<string> { "默认" };
@@ -40,6 +41,7 @@ public partial class ConnectionEditWindow : Window
     UserBox.Text = entry.Username;
     PasswordBox.Text = entry.Password ?? string.Empty;
     ShareDiskBox.Text = entry.ShareDisk;
+    EnableProcessWatchBox.IsChecked = entry.EnableProcessWatch;
 
     var groupItems = groups.Distinct().Where(g => !string.IsNullOrWhiteSpace(g)).OrderBy(g => g).ToList();
     if (groupItems.Count == 0)
@@ -62,7 +64,8 @@ public partial class ConnectionEditWindow : Window
       Username = UserBox.Text?.Trim() ?? string.Empty,
       Password = PasswordBox.Text,
       ShareDisk = ShareDiskBox.Text?.Trim() ?? string.Empty,
-      Group = group.Trim()
+      Group = group.Trim(),
+      EnableProcessWatch = EnableProcessWatchBox.IsChecked == true
     };
 
     Close(result);

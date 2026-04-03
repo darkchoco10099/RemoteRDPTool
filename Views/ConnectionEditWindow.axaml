@@ -66,7 +66,7 @@
           BoxShadow="0 0 0 0 Transparent"
           Padding="18">
     <Grid ColumnDefinitions="Auto,*"
-          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
           RowSpacing="12"
           ColumnSpacing="12">
       <Grid Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" PointerPressed="TitleBar_PointerPressed">
@@ -92,7 +92,10 @@
       <TextBlock Classes="fieldLabel" Grid.Row="6" Text="共享盘符" VerticalAlignment="Center" />
       <TextBox x:Name="ShareDiskBox" Grid.Row="6" Grid.Column="1" Watermark="例如：c$ 或 share" />
 
-      <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <TextBlock Classes="fieldLabel" Grid.Row="7" Text="进程检测" VerticalAlignment="Center" />
+      <CheckBox x:Name="EnableProcessWatchBox" Grid.Row="7" Grid.Column="1" Content="启用此主机进程检测" />
+
+      <StackPanel Grid.Row="8" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
         <Button Classes="secondaryAction" Content="取消" Click="Cancel_Click" />
         <Button Classes="primaryAction" Content="保存" IsDefault="True" Click="Save_Click" />
       </StackPanel>
